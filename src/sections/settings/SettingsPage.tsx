@@ -1,0 +1,195 @@
+import { useState } from 'react'
+import type { FormEvent } from 'react'
+import { displayMembers } from '../../domain/members.ts'
+import { useAppServices } from '../../app/useAppServices.ts'
+import { messageFrom } from '../../ui/messageFrom.ts'
+
+export function SettingsPage() {
+  const app = useAppServices()
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  if (app.mode === 'local' || !app.wedding || !app.user) {
+    return (
+      <section className="page">
+        <header className="page-header">
+          <div>
+            <h1>הגדרות</h1>
+            <p>איפה נשמרת רשימת המוזמנים.</p>
+          </div>
+        </header>
+        <div className="panel">
+          <h2>שמירה מקומית</h2>
+          <p>
+            לא הוגדר Firebase, ולכן הרשימה נשמרת רק בדפדפן הזה ולא מסתנכרנת בין המכשירים. כדי לשמור בענן ולשתף
+            עם בן או בת הזוג, חברו פרויקט Firebase לפי ההוראות בקובץ README.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  const wedding = app.wedding
+  const isOwner = wedding.ownerEmail.toLowerCase() === app.user.email.toLowerCase()
+  const members = displayMembers(wedding.memberEmails, wedding.ownerEmail)
+
+  async function run(action: () => Promise<void>, success: string) {
+    setBusy(true)
+    setError(null)
+    setStatus(null)
+    try {
+      await action()
+      setStatus(success)
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="page">
+      <header className="page-header">
+        <div>
+          <h1>הגדרות</h1>
+          <p>שיתוף הרשימה עם בן או בת הזוג.</p>
+        </div>
+      </header>
+
+      {app.weddings.length > 1 && (
+        <label className="field panel-field">
+          <span>החתונה הפעילה</span>
+          <select value={wedding.id} onChange={(event) => app.onSelectWedding?.(event.target.value)}>
+            {app.weddings.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} · {item.ownerEmail}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <WeddingNameForm
+        key={`${wedding.id}:${wedding.name}`}
+        initialName={wedding.name}
+        isOwner={isOwner}
+        busy={busy}
+        onSave={(next) => {
+          if (!app.onRenameWedding) return
+          void run(() => app.onRenameWedding!(next), 'שם החתונה נשמר.')
+        }}
+      />
+
+      <div className="panel stack-form">
+        <h2>האימייל שלי</h2>
+        <p>את הכתובת הזו מוסיפים לרשימת השותפים. היא צריכה להתאים לחשבון Google.</p>
+        <input className="ltr-field" dir="ltr" readOnly value={app.user.email} aria-label="האימייל שלי" />
+      </div>
+
+      <div className="panel stack-form">
+        <h2>שותפים</h2>
+        {!isOwner && <p>אתם צופים בחתונה של {wedding.ownerEmail}. רק בעלי החתונה יכולים לעדכן את רשימת השותפים.</p>}
+        {isOwner && (
+          <form
+            className="member-add"
+            onSubmit={(event: FormEvent) => {
+              event.preventDefault()
+              if (!app.onAddMember) return
+              const next = email
+              void run(async () => {
+                await app.onAddMember!(next)
+                setEmail('')
+              }, 'השותף נוסף. אחרי שיתחברו עם Google הם יראו את אותה רשימה.')
+            }}
+          >
+            <label className="field">
+              <span>אימייל של בן או בת הזוג</span>
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                dir="ltr"
+                className="ltr-field"
+                placeholder="name@gmail.com"
+                autoComplete="email"
+              />
+            </label>
+            <button type="submit" className="btn btn-primary" disabled={busy || email.trim() === ''}>
+              הוספה
+            </button>
+          </form>
+        )}
+        <ul className="member-list">
+          {members.map((member) => (
+            <li key={member.email}>
+              <div>
+                <span className="ltr-inline" dir="ltr">
+                  {member.email}
+                </span>
+                <span className={`badge ${member.role === 'owner' ? 'badge-side' : 'badge-pending'}`}>
+                  {member.role === 'owner' ? 'בעלים' : 'שותף'}
+                </span>
+              </div>
+              {isOwner && member.role !== 'owner' && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-small"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!app.onRemoveMember) return
+                    void run(() => app.onRemoveMember!(member.email), 'השותף הוסר.')
+                  }}
+                >
+                  הסרה
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {status && <p className="hint">{status}</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function WeddingNameForm({
+  initialName,
+  isOwner,
+  busy,
+  onSave,
+}: {
+  initialName: string
+  isOwner: boolean
+  busy: boolean
+  onSave: (name: string) => void
+}) {
+  const [name, setName] = useState(initialName)
+
+  return (
+    <form
+      className="panel stack-form"
+      onSubmit={(event: FormEvent) => {
+        event.preventDefault()
+        if (!isOwner) return
+        onSave(name)
+      }}
+    >
+      <label className="field">
+        <span>שם החתונה</span>
+        <input value={name} onChange={(event) => setName(event.target.value)} disabled={!isOwner || busy} />
+      </label>
+      {isOwner && (
+        <button type="submit" className="btn btn-primary" disabled={busy}>
+          שמירת שם
+        </button>
+      )}
+    </form>
+  )
+}
