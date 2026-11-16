@@ -1,0 +1,23 @@
+{
+  "name": "תכנון חתונה",
+  "short_name": "חתונה",
+  "start_url": "/wedding-planner/",
+  "scope": "/wedding-planner/",
+  "display": "standalone",
+  "theme_color": "#eef6f0",
+  "background_color": "#eef6f0",
+  "icons": [
+    {
+      "src": "/wedding-planner/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/wedding-planner/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
