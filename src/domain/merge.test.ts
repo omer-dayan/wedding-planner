@@ -27,6 +27,7 @@ describe('app csv re-import', () => {
           partySizeAssumed: false,
           rsvp: 'attending',
           notes: 'עודכן',
+          role: null,
         },
       ],
       clock,
@@ -51,6 +52,7 @@ describe('app csv re-import', () => {
         partySizeAssumed: true,
         rsvp: 'maybe',
         notes: '',
+        role: null,
       },
     ])
     expect(byName.created).toBe(0)

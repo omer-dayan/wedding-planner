@@ -1,3 +1,5 @@
+import type { WeddingRoleId } from './roles.ts'
+
 export const SIDES = ['groom', 'bride', 'shared'] as const
 export type Side = (typeof SIDES)[number]
 
@@ -8,6 +10,7 @@ export interface GuestDraft {
   fullName: string
   phone: string
   side: Side | null
+  role: WeddingRoleId | null
   group: string
   partySize: number
   partySizeAssumed: boolean
@@ -20,6 +23,8 @@ export interface Guest extends GuestDraft {
   createdAt: string
   updatedAt: string
 }
+
+export type { WeddingRoleId } from './roles.ts'
 
 export function isSide(value: unknown): value is Side {
   return typeof value === 'string' && (SIDES as readonly string[]).includes(value)

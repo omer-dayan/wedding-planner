@@ -17,6 +17,7 @@ export function LocalApp() {
       onSelectWedding: null,
       onRenameWedding: null,
       onAddMember: null,
+      onSetMemberRole: null,
       onRemoveMember: null,
     }),
     [guests],

@@ -1,4 +1,5 @@
 import { ValidationError } from './errors.ts'
+import { isWeddingRole, sideForRole } from './roles.ts'
 import { isRsvp, isSide } from './types.ts'
 import type { Guest, GuestDraft } from './types.ts'
 
@@ -25,7 +26,10 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
   if (!Number.isInteger(input.partySize) || input.partySize < 1 || input.partySize > 100) {
     errors.push('party-size')
   }
-  if (input.side !== null && !isSide(input.side)) errors.push('side')
+  const role = isWeddingRole(input.role) ? input.role : null
+  if (input.role !== null && !role) errors.push('role')
+  const side = role ? sideForRole(role) : input.side
+  if (side !== null && !isSide(side)) errors.push('side')
   if (!isRsvp(input.rsvp)) errors.push('rsvp')
   if (typeof input.partySizeAssumed !== 'boolean') errors.push('assumed')
   if (errors.length > 0) throw new ValidationError(errors)
@@ -33,7 +37,8 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
   return {
     fullName,
     phone,
-    side: input.side,
+    side,
+    role,
     group,
     partySize: input.partySize,
     partySizeAssumed: input.partySizeAssumed,
@@ -59,6 +64,7 @@ export function parseStoredGuest(value: unknown): Guest | null {
       partySizeAssumed: record.partySizeAssumed === true,
       rsvp: (typeof record.rsvp === 'string' ? record.rsvp : '') as GuestDraft['rsvp'],
       notes: typeof record.notes === 'string' ? record.notes : '',
+      role: isWeddingRole(record.role) ? record.role : null,
     })
   } catch {
     return null

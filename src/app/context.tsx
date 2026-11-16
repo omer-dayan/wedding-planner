@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { AppContext } from './appContext.ts'
 import type { GuestRepository } from '../data/guestRepository.ts'
 import type { Wedding } from '../domain/members.ts'
+import type { WeddingRoleId } from '../domain/roles.ts'
 
 export interface SessionUser {
   email: string
@@ -17,7 +18,8 @@ export interface AppServices {
   onSignOut: (() => Promise<void>) | null
   onSelectWedding: ((id: string) => void) | null
   onRenameWedding: ((name: string) => Promise<void>) | null
-  onAddMember: ((email: string) => Promise<void>) | null
+  onAddMember: ((email: string, role: WeddingRoleId) => Promise<void>) | null
+  onSetMemberRole: ((email: string, role: WeddingRoleId) => Promise<void>) | null
   onRemoveMember: ((email: string) => Promise<void>) | null
 }
 

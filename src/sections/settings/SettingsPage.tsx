@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { displayMembers } from '../../domain/members.ts'
+import { assignedRole, roleLabel, WEDDING_ROLES } from '../../domain/roles.ts'
+import type { WeddingRoleId } from '../../domain/roles.ts'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
 export function SettingsPage() {
   const app = useAppServices()
   const [email, setEmail] = useState('')
+  const [newRole, setNewRole] = useState<WeddingRoleId>('bride')
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -99,13 +102,13 @@ export function SettingsPage() {
               if (!app.onAddMember) return
               const next = email
               void run(async () => {
-                await app.onAddMember!(next)
+                await app.onAddMember!(next, newRole)
                 setEmail('')
               }, 'השותף נוסף. אחרי שיתחברו עם Google הם יראו את אותה רשימה.')
             }}
           >
             <label className="field">
-              <span>אימייל של בן או בת הזוג</span>
+              <span>אימייל</span>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -115,6 +118,14 @@ export function SettingsPage() {
                 placeholder="name@gmail.com"
                 autoComplete="email"
               />
+            </label>
+            <label className="field">
+              <span>תפקיד</span>
+              <select value={newRole} onChange={(event) => setNewRole(event.target.value as WeddingRoleId)} required>
+                {WEDDING_ROLES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
             </label>
             <button type="submit" className="btn btn-primary" disabled={busy || email.trim() === ''}>
               הוספה
@@ -131,7 +142,28 @@ export function SettingsPage() {
                 <span className={`badge ${member.role === 'owner' ? 'badge-side' : 'badge-pending'}`}>
                   {member.role === 'owner' ? 'בעלים' : 'שותף'}
                 </span>
+                <span className="badge badge-maybe">{roleLabel(assignedRole(wedding, member.email))}</span>
               </div>
+              {isOwner && (
+                <label className="field">
+                  <span className="visually-hidden">תפקיד של {member.email}</span>
+                  <select
+                    value={assignedRole(wedding, member.email) ?? 'groom'}
+                    disabled={busy}
+                    onChange={(event) => {
+                      if (!app.onSetMemberRole) return
+                      void run(
+                        () => app.onSetMemberRole!(member.email, event.target.value as WeddingRoleId),
+                        'התפקיד עודכן.',
+                      )
+                    }}
+                  >
+                    {WEDDING_ROLES.map((item) => (
+                      <option key={item.id} value={item.id}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {isOwner && member.role !== 'owner' && (
                 <button
                   type="button"

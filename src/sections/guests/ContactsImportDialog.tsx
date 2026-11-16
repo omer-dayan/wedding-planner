@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
-import { PRESET_GROUPS, SIDE_LABELS } from '../../domain/labels.ts'
-import type { Guest, GuestDraft, Side } from '../../domain/types.ts'
+import { PRESET_GROUPS } from '../../domain/labels.ts'
+import { roleLabel, sideForRole, WEDDING_ROLES } from '../../domain/roles.ts'
+import type { WeddingRoleId } from '../../domain/roles.ts'
+import type { Guest, GuestDraft } from '../../domain/types.ts'
 import { contactsMatch, parseVCards, type ParsedContact } from '../../domain/vcard.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
@@ -38,18 +40,22 @@ function rowsFromContacts(contacts: readonly ParsedContact[], guests: readonly G
 export function ContactsImportDialog({
   guests,
   groups,
+  lockedRole,
+  defaultRole,
   onClose,
   onCreate,
 }: {
   guests: readonly Guest[]
   groups: readonly string[]
+  lockedRole: WeddingRoleId | null
+  defaultRole: WeddingRoleId
   onClose: () => void
   onCreate: (drafts: GuestDraft[]) => Promise<void>
 }) {
   const picker = useMemo(() => contactPicker(), [])
   const groupOptions = useMemo(() => [...new Set([...PRESET_GROUPS, ...groups.filter(Boolean)])], [groups])
   const [rows, setRows] = useState<PreviewRow[] | null>(null)
-  const [side, setSide] = useState<Side>('bride')
+  const [role, setRole] = useState<WeddingRoleId>(lockedRole ?? defaultRole)
   const [group, setGroup] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +107,8 @@ export function ContactsImportDialog({
       .map((row) => ({
         fullName: row.fullName,
         phone: row.phone,
-        side,
+        side: sideForRole(lockedRole ?? role),
+        role: lockedRole ?? role,
         group: group.trim(),
         partySize: 1,
         partySizeAssumed: false,
@@ -156,11 +163,16 @@ export function ContactsImportDialog({
         <>
           <div className="import-options">
             <label className="field">
-              <span>צד</span>
-              <select value={side} onChange={(event) => setSide(event.target.value as Side)}>
-                <option value="bride">{SIDE_LABELS.bride}</option>
-                <option value="groom">{SIDE_LABELS.groom}</option>
-              </select>
+              <span>תפקיד</span>
+              {lockedRole ? (
+                <input value={roleLabel(lockedRole)} readOnly />
+              ) : (
+                <select value={role} onChange={(event) => setRole(event.target.value as WeddingRoleId)}>
+                  {WEDDING_ROLES.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              )}
             </label>
             <label className="field">
               <span>קבוצה לכולם (לא חובה)</span>

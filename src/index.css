@@ -403,7 +403,18 @@ textarea { min-height: 88px; resize: vertical; }
 
 .import-options { display: grid; gap: 10px; }
 
-.member-list li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.member-list li { padding: 8px 0; border-bottom: 1px solid var(--line); align-items: center; }
 
 .panel-field { margin-bottom: 14px; }
 

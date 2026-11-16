@@ -36,6 +36,7 @@ describe('app csv', () => {
         partySizeAssumed: true,
         rsvp: 'attending',
         notes: 'שורה, עם "ציטוט"',
+        role: null,
       },
     ])
   })

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { PRESET_GROUPS, RSVP_LABELS, SIDE_LABELS } from '../../domain/labels.ts'
-import { RSVP_STATUSES, SIDES } from '../../domain/types.ts'
-import type { Guest, GuestDraft, RsvpStatus, Side } from '../../domain/types.ts'
+import { PRESET_GROUPS, RSVP_LABELS, sideLabel } from '../../domain/labels.ts'
+import { roleLabel, sideForRole, WEDDING_ROLES } from '../../domain/roles.ts'
+import type { WeddingRoleId } from '../../domain/roles.ts'
+import { RSVP_STATUSES } from '../../domain/types.ts'
+import type { Guest, GuestDraft, RsvpStatus } from '../../domain/types.ts'
 import { normalizeDraft } from '../../domain/validation.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
@@ -12,6 +14,8 @@ export function GuestForm({
   guest,
   groups,
   saving,
+  lockedRole,
+  defaultRole,
   onCancel,
   onSubmit,
   onDelete,
@@ -19,6 +23,8 @@ export function GuestForm({
   guest: Guest | null
   groups: readonly string[]
   saving: boolean
+  lockedRole: WeddingRoleId | null
+  defaultRole: WeddingRoleId
   onCancel: () => void
   onSubmit: (draft: GuestDraft) => Promise<void>
   onDelete?: () => void
@@ -26,7 +32,7 @@ export function GuestForm({
   const options = [...new Set([...PRESET_GROUPS, ...groups.filter(Boolean)])]
   const [fullName, setFullName] = useState(guest?.fullName ?? '')
   const [phone, setPhone] = useState(guest?.phone ?? '')
-  const [side, setSide] = useState<Side | ''>(guest?.side ?? '')
+  const [role, setRole] = useState<WeddingRoleId | ''>(lockedRole ?? guest?.role ?? (guest ? '' : defaultRole))
   const [group, setGroup] = useState(guest?.group ?? '')
   const [customGroup, setCustomGroup] = useState(() => group !== '' && !options.includes(group))
   const [partySize, setPartySize] = useState(String(guest?.partySize ?? 1))
@@ -38,10 +44,12 @@ export function GuestForm({
     event.preventDefault()
     const parsedSize = Number(partySize)
     try {
+      const chosen = lockedRole ?? (role || null)
       const draft = normalizeDraft({
         fullName,
         phone,
-        side: side || null,
+        side: chosen ? sideForRole(chosen) : guest?.side ?? null,
+        role: chosen,
         group,
         partySize: parsedSize,
         partySizeAssumed: false,
@@ -75,16 +83,21 @@ export function GuestForm({
         />
       </label>
       <label className="field">
-        <span>צד</span>
-        <select value={side} onChange={(event) => setSide(event.target.value as Side | '')}>
-          <option value="">לא צוין</option>
-          {SIDES.map((option) => (
-            <option key={option} value={option}>
-              {SIDE_LABELS[option]}
-            </option>
-          ))}
-        </select>
+        <span>תפקיד</span>
+        {lockedRole ? (
+          <input value={roleLabel(lockedRole)} readOnly />
+        ) : (
+          <select value={role} onChange={(event) => setRole(event.target.value as WeddingRoleId | '')}>
+            {guest && !guest.role && <option value="">ללא תפקיד</option>}
+            {WEDDING_ROLES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        )}
       </label>
+      <p className="hint">צד: {sideLabel((lockedRole ?? (role || null)) ? sideForRole((lockedRole ?? role) as WeddingRoleId) : guest?.side ?? null)}</p>
       <div className="field">
         <label htmlFor="guest-group">קבוצה</label>
         <select

@@ -3,7 +3,9 @@ rules_version = '2';
 // A wedding document is shared by an allowlist of Google account emails.
 // Only signed-in, verified users whose email is in memberEmails can read or
 // write that wedding and its guest subcollection. Only the owner can change
-// the allowlist. The client queries:
+// the allowlist or memberRoles. Parents and siblings may write guests only
+// for their own role. The couple (groom/bride) and the owner are unrestricted.
+// The client queries:
 //   weddings where memberEmails array-contains request.auth.token.email
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -26,8 +28,43 @@ service cloud.firestore {
       return signedIn() && myEmail() in weddingData(weddingId).memberEmails;
     }
 
+    function isOwner(weddingId) {
+      return weddingData(weddingId).ownerEmail == myEmail()
+        || weddingData(weddingId).ownerEmail.lower() == myEmail().lower();
+    }
+
+    function hasRoleMap(weddingId) {
+      return weddingData(weddingId).keys().hasAny(['memberRoles'])
+        && weddingData(weddingId).memberRoles is map;
+    }
+
+    function myRole(weddingId) {
+      return hasRoleMap(weddingId) && myEmail().lower() in weddingData(weddingId).memberRoles
+        ? weddingData(weddingId).memberRoles[myEmail().lower()]
+        : null;
+    }
+
+    function isRestricted(weddingId) {
+      return !isOwner(weddingId)
+        && myRole(weddingId) != null
+        && myRole(weddingId) != 'groom'
+        && myRole(weddingId) != 'bride';
+    }
+
+    function roleSide(role) {
+      return role == 'bride' || role == 'bride_father' || role == 'bride_mother' || role == 'bride_brother' || role == 'bride_sister'
+        ? 'bride'
+        : 'groom';
+    }
+
+    function knownRole(role) {
+      return role == 'groom' || role == 'groom_father' || role == 'groom_mother' || role == 'groom_brother' || role == 'groom_sister'
+        || role == 'bride' || role == 'bride_father' || role == 'bride_mother' || role == 'bride_brother' || role == 'bride_sister';
+    }
+
     function validWedding(data) {
-      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['name', 'ownerEmail', 'memberEmails', 'createdAt', 'updatedAt'])
         && data.name is string
         && data.name.size() > 0
         && data.name.size() < 120
@@ -38,7 +75,8 @@ service cloud.firestore {
         && data.memberEmails.size() > 0
         && data.memberEmails.size() <= 40
         && data.createdAt is string
-        && data.updatedAt is string;
+        && data.updatedAt is string
+        && (!data.keys().hasAny(['memberRoles']) || (data.memberRoles is map && data.memberRoles.size() <= 40));
     }
 
     function validGuest(data) {
@@ -46,6 +84,7 @@ service cloud.firestore {
           'fullName',
           'phone',
           'side',
+          'role',
           'group',
           'partySize',
           'partySizeAssumed',
@@ -69,8 +108,18 @@ service cloud.firestore {
         && data.partySizeAssumed is bool
         && data.rsvp in ['pending', 'attending', 'declined', 'maybe']
         && (data.side == null || data.side in ['groom', 'bride', 'shared'])
+        && (data.role == null || knownRole(data.role))
+        && (data.role == null || data.side == roleSide(data.role))
         && data.createdAt is string
         && data.updatedAt is string;
+    }
+
+    function guestWriteAllowed(weddingId) {
+      return !isRestricted(weddingId)
+        || (
+          request.resource.data.role == myRole(weddingId)
+          && request.resource.data.side == roleSide(myRole(weddingId))
+        );
     }
 
     match /weddings/{weddingId} {
@@ -82,9 +131,9 @@ service cloud.firestore {
         && myEmail() in request.resource.data.memberEmails;
 
       allow update: if signedIn()
-        && resource.data.ownerEmail == myEmail()
+        && isOwner(weddingId)
         && validWedding(request.resource.data)
-        && request.resource.data.ownerEmail == myEmail()
+        && request.resource.data.ownerEmail == resource.data.ownerEmail
         && myEmail() in request.resource.data.memberEmails
         && request.resource.data.createdAt == resource.data.createdAt;
 
@@ -92,11 +141,14 @@ service cloud.firestore {
 
       match /guests/{guestId} {
         allow read: if isMember(weddingId);
-        allow create: if isMember(weddingId) && validGuest(request.resource.data);
+        allow create: if isMember(weddingId) && validGuest(request.resource.data) && guestWriteAllowed(weddingId);
         allow update: if isMember(weddingId)
           && validGuest(request.resource.data)
-          && request.resource.data.createdAt == resource.data.createdAt;
-        allow delete: if isMember(weddingId);
+          && request.resource.data.createdAt == resource.data.createdAt
+          && guestWriteAllowed(weddingId)
+          && (!isRestricted(weddingId) || resource.data.role == myRole(weddingId));
+        allow delete: if isMember(weddingId)
+          && (!isRestricted(weddingId) || resource.data.role == myRole(weddingId));
       }
     }
   }

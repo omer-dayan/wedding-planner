@@ -1,4 +1,5 @@
 import { RSVP_LABELS, SIDE_LABELS, UNSPECIFIED_SIDE_LABEL } from './labels.ts'
+import { roleFromLabel, roleLabel } from './roles.ts'
 import { isRsvp, isSide } from './types.ts'
 import type { Guest, GuestDraft, RsvpStatus, Side } from './types.ts'
 
@@ -12,6 +13,7 @@ export const APP_CSV_HEADERS = [
   'מספר לא צוין',
   'סטטוס הגעה',
   'הערות',
+  'תפקיד',
 ] as const
 
 type CsvField =
@@ -24,6 +26,7 @@ type CsvField =
   | 'partySizeAssumed'
   | 'rsvp'
   | 'notes'
+  | 'role'
 
 const HEADER_ALIASES: Record<string, CsvField> = {
   מזהה: 'id',
@@ -47,6 +50,8 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   status: 'rsvp',
   הערות: 'notes',
   notes: 'notes',
+  תפקיד: 'role',
+  role: 'role',
 }
 
 const SIDE_FROM_LABEL = new Map<string, Side | null>([
@@ -101,6 +106,7 @@ export function guestsToAppCsv(guests: readonly Guest[]): string {
       guest.partySizeAssumed ? 'כן' : 'לא',
       RSVP_LABELS[guest.rsvp],
       guest.notes,
+      guest.role ? roleLabel(guest.role) : '',
     ]),
   ]
   return serializeCsv(rows)
@@ -167,6 +173,7 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       partySizeAssumed: parseYes(cell('partySizeAssumed')),
       rsvp,
       notes: columns.has('notes') ? (row[columns.get('notes') as number] ?? '').trim() : '',
+      role: roleFromLabel(cell('role')),
     })
   })
 

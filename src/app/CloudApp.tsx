@@ -10,6 +10,8 @@ import {
 } from '../data/firebaseBackend.ts'
 import type { FirebaseWebConfig } from '../data/firebaseConfig.ts'
 import { addMemberEmail, chooseWedding, removeMemberEmail, type Wedding } from '../domain/members.ts'
+import { cleanMemberRoles } from '../domain/roles.ts'
+import type { WeddingRoleId } from '../domain/roles.ts'
 import { SignInScreen } from '../auth/SignInScreen.tsx'
 import { AppShell } from '../layout/AppShell.tsx'
 import { firebaseCode, mapFirebaseCode, messageFrom } from '../ui/messageFrom.ts'
@@ -188,13 +190,24 @@ function WeddingSession({
     onSignOut: () => signOutUser(services.auth),
     onSelectWedding,
     onRenameWedding: (name) => weddingsRepo.updateName(wedding.id, name),
-    onAddMember: async (memberEmail) => {
-      await weddingsRepo.updateMembers(wedding.id, addMemberEmail(wedding.memberEmails, wedding.ownerEmail, memberEmail))
+    onAddMember: async (memberEmail, role) => {
+      const memberRoles = withRole(wedding, memberEmail, role)
+      await weddingsRepo.updateMembers(
+        wedding.id,
+        addMemberEmail(wedding.memberEmails, wedding.ownerEmail, memberEmail),
+        memberRoles,
+      )
+    },
+    onSetMemberRole: async (memberEmail, role) => {
+      await weddingsRepo.updateMembers(wedding.id, wedding.memberEmails, withRole(wedding, memberEmail, role))
     },
     onRemoveMember: async (memberEmail) => {
+      const memberRoles = { ...cleanMemberRoles(wedding.memberRoles) }
+      delete memberRoles[memberEmail.trim().toLowerCase()]
       await weddingsRepo.updateMembers(
         wedding.id,
         removeMemberEmail(wedding.memberEmails, wedding.ownerEmail, memberEmail),
+        memberRoles,
       )
     },
   }
@@ -204,4 +217,12 @@ function WeddingSession({
       <AppShell />
     </AppServicesProvider>
   )
+}
+
+function withRole(wedding: Wedding, email: string, role: WeddingRoleId): Record<string, WeddingRoleId> {
+  const roles = cleanMemberRoles(wedding.memberRoles)
+  roles[email.trim().toLowerCase()] = role
+  const ownerKey = wedding.ownerEmail.trim().toLowerCase()
+  if (!roles[ownerKey]) roles[ownerKey] = 'groom'
+  return roles
 }

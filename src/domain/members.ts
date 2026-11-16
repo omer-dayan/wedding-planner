@@ -1,10 +1,12 @@
 import { DomainError } from './errors.ts'
+import type { WeddingRoleId } from './roles.ts'
 
 export interface Wedding {
   id: string
   name: string
   ownerEmail: string
   memberEmails: string[]
+  memberRoles: Record<string, WeddingRoleId>
   createdAt: string
   updatedAt: string
 }

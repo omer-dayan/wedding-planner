@@ -1,13 +1,15 @@
-import type { Guest, RsvpStatus, Side } from './types.ts'
+import type { Guest, RsvpStatus, Side, WeddingRoleId } from './types.ts'
 
 export type SideFilter = Side | 'unspecified' | 'all'
 export type RsvpFilter = RsvpStatus | 'all'
+export type RoleFilter = WeddingRoleId | 'none' | 'all'
 
 export interface GuestQuery {
   search: string
   side: SideFilter
   group: string | 'all'
   rsvp: RsvpFilter
+  role: RoleFilter
   sort: 'asc' | 'desc'
 }
 
@@ -16,6 +18,7 @@ export const EMPTY_QUERY: GuestQuery = {
   side: 'all',
   group: 'all',
   rsvp: 'all',
+  role: 'all',
   sort: 'asc',
 }
 
@@ -26,6 +29,8 @@ export function queryGuests(guests: readonly Guest[], query: GuestQuery): Guest[
     if (query.side !== 'all' && (guest.side ?? 'unspecified') !== query.side) return false
     if (query.group !== 'all' && guest.group !== query.group) return false
     if (query.rsvp !== 'all' && guest.rsvp !== query.rsvp) return false
+    if (query.role === 'none' && guest.role !== null) return false
+    if (query.role !== 'all' && query.role !== 'none' && guest.role !== query.role) return false
     if (!search) return true
     const haystack = `${guest.fullName} ${guest.notes} ${guest.group} ${guest.phone}`.toLocaleLowerCase('he')
     if (haystack.includes(search)) return true

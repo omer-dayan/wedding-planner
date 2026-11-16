@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { guestsToAppCsv } from '../../domain/csv.ts'
 import { PRESET_GROUPS, RSVP_LABELS, sideLabel } from '../../domain/labels.ts'
+import { assignedRole, canEditGuest, isRestrictedMember, roleLabel, WEDDING_ROLES } from '../../domain/roles.ts'
 import { EMPTY_QUERY, groupOptions, queryGuests } from '../../domain/query.ts'
 import type { GuestQuery } from '../../domain/query.ts'
 import { RSVP_STATUSES, SIDES } from '../../domain/types.ts'
@@ -44,7 +45,10 @@ export function GuestListPage() {
   const stats = useMemo(() => summarizeGuests(guests ?? []), [guests])
   const groups = useMemo(() => groupOptions(guests ?? []), [guests])
   const formGroups = useMemo(() => [...new Set([...PRESET_GROUPS, ...groups])], [groups])
-  const filtersActive = query.search !== '' || query.side !== 'all' || query.group !== 'all' || query.rsvp !== 'all'
+  const filtersActive = query.search !== '' || query.side !== 'all' || query.group !== 'all' || query.rsvp !== 'all' || query.role !== 'all'
+  const viewerEmail = app.user?.email ?? null
+  const lockedRole = isRestrictedMember(app.wedding, viewerEmail) ? assignedRole(app.wedding, viewerEmail) : null
+  const defaultRole = assignedRole(app.wedding, viewerEmail) ?? 'groom'
 
   async function saveGuest(draft: GuestDraft) {
     setSaving(true)
@@ -130,6 +134,16 @@ export function GuestListPage() {
               />
             </label>
             <label className="field">
+              <span>תפקיד</span>
+              <select value={query.role} onChange={(event) => setQuery({ ...query, role: event.target.value as GuestQuery['role'] })}>
+                <option value="all">הכל</option>
+                <option value="none">ללא תפקיד</option>
+                {WEDDING_ROLES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
               <span>צד</span>
               <select value={query.side} onChange={(event) => setQuery({ ...query, side: event.target.value as GuestQuery['side'] })}>
                 <option value="all">הכל</option>
@@ -189,6 +203,7 @@ export function GuestListPage() {
                     <tr>
                       <th>שם</th>
                       <th>טלפון</th>
+                      <th>תפקיד</th>
                       <th>צד</th>
                       <th>קבוצה</th>
                       <th>אנשים</th>
@@ -204,6 +219,7 @@ export function GuestListPage() {
                           {guest.notes && <span className="cell-note">{guest.notes}</span>}
                         </td>
                         <td className="ltr-inline" dir="ltr">{guest.phone || '—'}</td>
+                        <td>{roleLabel(guest.role)}</td>
                         <td>{sideLabel(guest.side)}</td>
                         <td>{guest.group || '—'}</td>
                         <td>
@@ -212,8 +228,12 @@ export function GuestListPage() {
                         </td>
                         <td><span className={`badge badge-${guest.rsvp}`}>{RSVP_LABELS[guest.rsvp]}</span></td>
                         <td className="row-actions">
-                          <button type="button" className="btn btn-ghost btn-small" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
-                          <button type="button" className="btn btn-danger btn-small" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
+                          {canEditGuest(app.wedding, viewerEmail, guest) && (
+                            <>
+                              <button type="button" className="btn btn-ghost btn-small" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
+                              <button type="button" className="btn btn-danger btn-small" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -231,13 +251,18 @@ export function GuestListPage() {
                     <p className="guest-meta">
                       <span className="ltr-inline" dir="ltr">{guest.phone || 'בלי טלפון'}</span>
                       <span>{guest.partySize} אנשים</span>
+                      <span>{roleLabel(guest.role)}</span>
                       <span>{sideLabel(guest.side)}</span>
                       {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
                     </p>
                     {guest.notes && <p className="cell-note">{guest.notes}</p>}
                     <div className="row-actions">
-                      <button type="button" className="btn btn-ghost btn-small" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
-                      <button type="button" className="btn btn-danger btn-small" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
+                      {canEditGuest(app.wedding, viewerEmail, guest) && (
+                        <>
+                          <button type="button" className="btn btn-ghost btn-small" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
+                          <button type="button" className="btn btn-danger btn-small" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
+                        </>
+                      )}
                     </div>
                   </article>
                 ))}
@@ -265,6 +290,8 @@ export function GuestListPage() {
             guest={modal.guest}
             groups={formGroups}
             saving={saving}
+            lockedRole={lockedRole}
+            defaultRole={defaultRole}
             onCancel={() => setModal({ type: 'none' })}
             onSubmit={saveGuest}
             onDelete={modal.guest ? () => setModal({ type: 'delete', guest: modal.guest as Guest }) : undefined}
@@ -292,6 +319,8 @@ export function GuestListPage() {
           <ContactsImportDialog
             guests={guests ?? []}
             groups={formGroups}
+            lockedRole={lockedRole}
+            defaultRole={defaultRole}
             onClose={() => setModal({ type: 'none' })}
             onCreate={importContacts}
           />

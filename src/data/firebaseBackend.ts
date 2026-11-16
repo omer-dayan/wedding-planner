@@ -30,6 +30,7 @@ import { isCommittedServerSnapshot, nextPermissionRetryDelay } from './firestore
 import type { GuestRepository } from './guestRepository.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
 import { emailVariants, normalizeWeddingName, type Wedding } from '../domain/members.ts'
+import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
 import { normalizeDraft, parseStoredGuest } from '../domain/validation.ts'
 import type { Guest } from '../domain/types.ts'
 
@@ -39,7 +40,7 @@ export interface WeddingRepository {
   subscribe(listener: (weddings: Wedding[]) => void, onError?: (error: unknown) => void): () => void
   create(ownerEmail: string, name?: string): Promise<Wedding>
   updateName(id: string, name: string): Promise<void>
-  updateMembers(id: string, memberEmails: readonly string[]): Promise<void>
+  updateMembers(id: string, memberEmails: readonly string[], memberRoles: Record<string, WeddingRoleId>): Promise<void>
 }
 
 export interface FirebaseServices {
@@ -132,6 +133,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         name: normalizeWeddingName(name),
         ownerEmail,
         memberEmails: emailVariants(ownerEmail),
+        memberRoles: { [ownerEmail.trim().toLowerCase()]: 'groom' },
         createdAt: timestamp,
         updatedAt: timestamp,
       }
@@ -139,6 +141,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         name: wedding.name,
         ownerEmail: wedding.ownerEmail,
         memberEmails: wedding.memberEmails,
+        memberRoles: wedding.memberRoles,
         createdAt: wedding.createdAt,
         updatedAt: wedding.updatedAt,
       })
@@ -150,9 +153,10 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         updatedAt: new Date().toISOString(),
       })
     },
-    async updateMembers(id, memberEmails) {
+    async updateMembers(id, memberEmails, memberRoles) {
       await updateDoc(doc(weddings, id), {
         memberEmails: [...memberEmails],
+        memberRoles,
         updatedAt: new Date().toISOString(),
       })
     },
@@ -295,6 +299,7 @@ function guestToDoc(guest: Guest): Record<string, string | number | boolean | nu
     fullName: guest.fullName,
     phone: guest.phone,
     side: guest.side,
+    role: guest.role,
     group: guest.group,
     partySize: guest.partySize,
     partySizeAssumed: guest.partySizeAssumed,
@@ -310,11 +315,13 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     return null
   }
   const memberEmails = data.memberEmails.filter((email): email is string => typeof email === 'string')
+  const memberRoles = cleanMemberRoles(data.memberRoles)
   return {
     id,
     name: data.name,
     ownerEmail: data.ownerEmail,
     memberEmails,
+    memberRoles,
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
   }
