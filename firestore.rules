@@ -1,0 +1,103 @@
+rules_version = '2';
+
+// A wedding document is shared by an allowlist of Google account emails.
+// Only signed-in, verified users whose email is in memberEmails can read or
+// write that wedding and its guest subcollection. Only the owner can change
+// the allowlist. The client queries:
+//   weddings where memberEmails array-contains request.auth.token.email
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.size() > 0;
+    }
+
+    function myEmail() {
+      return request.auth.token.email;
+    }
+
+    function weddingData(weddingId) {
+      return get(/databases/$(database)/documents/weddings/$(weddingId)).data;
+    }
+
+    function isMember(weddingId) {
+      return signedIn() && myEmail() in weddingData(weddingId).memberEmails;
+    }
+
+    function validWedding(data) {
+      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'createdAt', 'updatedAt'])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() < 120
+        && data.ownerEmail is string
+        && data.ownerEmail.size() > 3
+        && data.ownerEmail.size() < 200
+        && data.memberEmails is list
+        && data.memberEmails.size() > 0
+        && data.memberEmails.size() <= 40
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
+    function validGuest(data) {
+      return data.keys().hasOnly([
+          'fullName',
+          'phone',
+          'side',
+          'group',
+          'partySize',
+          'partySizeAssumed',
+          'rsvp',
+          'notes',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.fullName is string
+        && data.fullName.size() > 0
+        && data.fullName.size() < 300
+        && data.phone is string
+        && data.phone.size() < 50
+        && data.group is string
+        && data.group.size() < 200
+        && data.notes is string
+        && data.notes.size() < 4000
+        && data.partySize is int
+        && data.partySize >= 1
+        && data.partySize <= 100
+        && data.partySizeAssumed is bool
+        && data.rsvp in ['pending', 'attending', 'declined', 'maybe']
+        && (data.side == null || data.side in ['groom', 'bride', 'shared'])
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
+    match /weddings/{weddingId} {
+      allow read: if signedIn() && myEmail() in resource.data.memberEmails;
+
+      allow create: if signedIn()
+        && validWedding(request.resource.data)
+        && request.resource.data.ownerEmail == myEmail()
+        && myEmail() in request.resource.data.memberEmails;
+
+      allow update: if signedIn()
+        && resource.data.ownerEmail == myEmail()
+        && validWedding(request.resource.data)
+        && request.resource.data.ownerEmail == myEmail()
+        && myEmail() in request.resource.data.memberEmails
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+
+      match /guests/{guestId} {
+        allow read: if isMember(weddingId);
+        allow create: if isMember(weddingId) && validGuest(request.resource.data);
+        allow update: if isMember(weddingId)
+          && validGuest(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isMember(weddingId);
+      }
+    }
+  }
+}
