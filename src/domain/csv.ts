@@ -229,13 +229,6 @@ export function serializeCsv(rows: readonly (readonly string[])[]): string {
   return `\uFEFF${body}\r\n`
 }
 
-export function looksLikeAppCsv(row: readonly string[]): boolean {
-  return row.some((cell) => {
-    const normalized = normalizeHeader(cell)
-    return normalized === 'מזהה' || normalized === 'שם מלא' || normalized === 'סטטוס הגעה' || normalized === 'fullname'
-  })
-}
-
 function escapeCell(value: string): string {
   if (/[",\r\n;]/.test(value)) return `"${value.replaceAll('"', '""')}"`
   return value

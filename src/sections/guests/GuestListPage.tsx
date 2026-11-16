@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
-import { parseAppCsv, guestsToAppCsv } from '../../domain/csv.ts'
-import { DomainError } from '../../domain/errors.ts'
-import { parseGoogleSheetCsv } from '../../domain/googleSheet.ts'
+import { guestsToAppCsv } from '../../domain/csv.ts'
 import { PRESET_GROUPS, RSVP_LABELS, sideLabel } from '../../domain/labels.ts'
-import { applyAppCsvImport, applySheetImport } from '../../domain/merge.ts'
 import { EMPTY_QUERY, groupOptions, queryGuests } from '../../domain/query.ts'
 import type { GuestQuery } from '../../domain/query.ts'
 import { RSVP_STATUSES, SIDES } from '../../domain/types.ts'
@@ -13,15 +10,15 @@ import { summarizeGuests } from '../../domain/stats.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
 import { downloadTextFile } from '../../ui/download.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
+import { ContactsImportDialog } from './ContactsImportDialog.tsx'
 import { GuestForm } from './GuestForm.tsx'
-import { SheetImportDialog } from './SheetImportDialog.tsx'
 import { Summary } from './Summary.tsx'
 
 type Modal =
   | { type: 'none' }
   | { type: 'form'; guest: Guest | null }
   | { type: 'delete'; guest: Guest }
-  | { type: 'sheet' }
+  | { type: 'contacts' }
 
 export function GuestListPage() {
   const app = useAppServices()
@@ -32,7 +29,6 @@ export function GuestListPage() {
   const [saving, setSaving] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const csvInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     return app.guests.subscribe(
@@ -79,31 +75,10 @@ export function GuestListPage() {
     }
   }
 
-  async function importSheet(text: string) {
-    if (!guests) throw new DomainError('unknown')
-    const parsed = parseGoogleSheetCsv(text)
-    if (parsed.fatal) throw new DomainError(parsed.fatal)
-    const merged = applySheetImport(guests, parsed.guests)
-    await app.guests.replaceAll(merged.guests)
-    setBanner(sheetMessage(merged.created, merged.updated, merged.assumed, parsed.skippedHeaderRows, parsed.duplicateNames, parsed.errors.length))
-  }
-
-  async function importAppFile(file: File) {
-    if (!guests) {
-      setActionError(messageFrom(new DomainError('unknown')))
-      return
-    }
-    setActionError(null)
-    try {
-      const parsed = parseAppCsv(await file.text())
-      if (parsed.fatal) throw new DomainError(parsed.fatal)
-      const merged = applyAppCsvImport(guests, parsed.records)
-      await app.guests.replaceAll(merged.guests)
-      const skipped = parsed.errors.length > 0 ? ` ${parsed.errors.length} שורות דולגו.` : ''
-      setBanner(`נוספו ${merged.created} מוזמנים, עודכנו ${merged.updated}.${skipped}`)
-    } catch (error) {
-      setActionError(messageFrom(error))
-    }
+  async function importContacts(drafts: GuestDraft[]) {
+    for (const draft of drafts) await app.guests.create(draft)
+    setBanner(`נוספו ${drafts.length} אנשי קשר.`)
+    setModal({ type: 'none' })
   }
 
   return (
@@ -120,23 +95,9 @@ export function GuestListPage() {
           <button type="button" className="btn btn-ghost" disabled={!guests} onClick={() => downloadTextFile('guest-list.csv', guestsToAppCsv(guests ?? []))}>
             ייצוא CSV
           </button>
-          <button type="button" className="btn btn-ghost" disabled={!guests} onClick={() => csvInput.current?.click()}>
-            ייבוא CSV
+          <button type="button" className="btn btn-ghost" disabled={!guests} onClick={() => setModal({ type: 'contacts' })}>
+            ייבוא מאנשי קשר
           </button>
-          <button type="button" className="btn btn-ghost" disabled={!guests} onClick={() => setModal({ type: 'sheet' })}>
-            ייבוא מ-Google Sheets
-          </button>
-          <input
-            ref={csvInput}
-            type="file"
-            accept=".csv,text/csv,text/plain"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              event.target.value = ''
-              if (file) void importAppFile(file)
-            }}
-          />
         </div>
       </header>
 
@@ -151,7 +112,7 @@ export function GuestListPage() {
           {guests.length === 0 ? (
             <div className="empty">
               <h2>עדיין אין מוזמנים</h2>
-              <p>הוסיפו אורח ראשון, או ייבאו רשימה מ-Google Sheets או מקובץ CSV.</p>
+              <p>הוסיפו אורח ראשון, או ייבאו מאנשי הקשר.</p>
               <button type="button" className="btn btn-primary" onClick={() => setModal({ type: 'form', guest: null })}>
                 הוספת מוזמן
               </button>
@@ -326,33 +287,16 @@ export function GuestListPage() {
         )}
       </Dialog>
 
-      <Dialog open={modal.type === 'sheet'} title="ייבוא מ-Google Sheets" onClose={() => setModal({ type: 'none' })}>
-        {modal.type === 'sheet' && (
-          <SheetImportDialog
+      <Dialog open={modal.type === 'contacts'} title="ייבוא מאנשי קשר" onClose={() => setModal({ type: 'none' })}>
+        {modal.type === 'contacts' && (
+          <ContactsImportDialog
+            guests={guests ?? []}
+            groups={formGroups}
             onClose={() => setModal({ type: 'none' })}
-            onImport={async (text) => {
-              await importSheet(text)
-              setModal({ type: 'none' })
-            }}
+            onCreate={importContacts}
           />
         )}
       </Dialog>
     </section>
   )
-}
-
-function sheetMessage(
-  created: number,
-  updated: number,
-  assumed: number,
-  skippedHeaderRows: number,
-  duplicateNames: number,
-  errorCount: number,
-): string {
-  const parts = [`נוספו ${created} מוזמנים, עודכנו ${updated}.`]
-  if (assumed > 0) parts.push(`ב-${assumed} רשומות לא צוין מספר אנשים, והוא נקבע ל-1.`)
-  if (skippedHeaderRows > 0) parts.push(`דולגו ${skippedHeaderRows} שורות כותרת.`)
-  if (duplicateNames > 0) parts.push(`${duplicateNames} שמות כפולים בגיליון מוזגו.`)
-  if (errorCount > 0) parts.push(`${errorCount} שורות לא יובאו כי מספר האנשים לא תקין.`)
-  return parts.join(' ')
 }

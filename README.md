@@ -1,18 +1,18 @@
 # תכנון חתונה
 
-אפליקציה לתכנון חתונה. בשלב הזה יש ניהול רשימת מוזמנים: הוספה, עריכה ומחיקה, חיפוש וסינון, סיכומי הגעה, ייבוא וייצוא CSV, וייבוא מגיליון Google Sheets ציבורי. התפריט הצדדי מוכן להוספת חלקים נוספים (תקציב, ספקים, משימות, הושבה) בהמשך.
+אפליקציה לתכנון חתונה. בשלב הזה יש ניהול רשימת מוזמנים: הוספה, עריכה ומחיקה, חיפוש וסינון, סיכומי הגעה, ייצוא CSV, וייבוא מאנשי קשר. התפריט הצדדי מוכן להוספת חלקים נוספים (תקציב, ספקים, משימות, הושבה) בהמשך.
 
 הממשק בעברית ובכיוון ימין־לשמאל. אם מוגדר Firebase, הרשימה נשמרת בענן ומסתנכרנת בין הטלפון למחשב, ואפשר לשתף אותה עם בן או בת הזוג לפי כתובת האימייל. בלי הגדרות Firebase הנתונים נשמרים רק בדפדפן (`localStorage`).
 
-**אין להעלות לריפו רשימת מוזמנים אמיתית.** אתר GitHub Pages ציבורי. קובץ הדוגמה בבדיקות (`test/fixtures/sample_sheet.csv`) מכיל שמות בדויים בלבד.
+**אין להעלות לריפו רשימת מוזמנים אמיתית.** אתר GitHub Pages ציבורי.
 
 ## מה אפשר לעשות
 
 - לנהל מוזמנים: שם מלא, טלפון, צד (חתן / כלה / משותף, או בלי צד), קבוצה (בחירה או טקסט חופשי), מספר אנשים כולל מלווים, סטטוס הגעה (ממתין / מגיע / לא מגיע / אולי) והערות.
 - לחפש, לסנן לפי צד, קבוצה וסטטוס, ולמיין לפי שם.
 - לראות למעלה כמה אנשים הוזמנו, כמה מגיעים, לא מגיעים וממתינים, כולל פירוק לפי צד.
-- לייצא ולייבא CSV של האפליקציה ב־UTF-8 עם BOM, כדי ש־Excel יפתח עברית כמו שצריך.
-- לייבא מגיליון Google Sheets ציבורי: מדביקים קישור שיתוף, או מעלים את אותו CSV. בגיליון אין שורת כותרת, ויש ארבע עמודות: קטגוריה, תת־קטגוריה, שם, מספר. קטגוריה ותת־קטגוריה מועתקות לשורות הבאות, וקטגוריה חדשה מאפסת את תת־הקטגוריה. שורה בלי שם היא כותרת. מספר ריק נשמר כ־1 ומסומן. ייבוא חוזר מעדכן לפי שם ולא מכפיל, ושומר סטטוס, טלפון, צד והערות שכבר מולאו.
+- לייצא CSV של האפליקציה ב־UTF-8 עם BOM, כדי ש־Excel יפתח עברית כמו שצריך.
+- לייבא מאנשי קשר: בחירה מהמכשיר כשזה נתמך, או קובץ vCard (באייפון: שיתוף איש קשר לקבצים). אנשי קשר שכבר ברשימה מסומנים ולא נבחרים כברירת מחדל.
 
 ## הרצה מקומית
 
@@ -67,7 +67,7 @@ npm run preview
 
 ## English
 
-Hebrew, right-to-left wedding planner. This version manages the guest list (add, edit, delete, search, filters, RSVP summary, CSV import/export, and public Google Sheets import). Navigation is ready for more sections later.
+Hebrew, right-to-left wedding planner. This version manages the guest list (add, edit, delete, search, filters, RSVP summary, CSV export, and contact import). Navigation is ready for more sections later.
 
 ```bash
 npm install
@@ -75,4 +75,4 @@ npm run dev
 npm test
 ```
 
-The dev server uses the GitHub Pages base path `/wedding-planner/`. Guest data stays in the browser unless Firebase env vars are set, in which case Google sign-in and Firestore sync the list per wedding for an allowlist of member emails. Deployed by GitHub Actions to GitHub Pages; in the repo settings, set Pages source to **GitHub Actions**. Do not commit a real guest list — the site is public. The checked-in sheet fixture uses fake names only.
+The dev server uses the GitHub Pages base path `/wedding-planner/`. Guest data stays in the browser unless Firebase env vars are set, in which case Google sign-in and Firestore sync the list per wedding for an allowlist of member emails. Deployed by GitHub Actions to GitHub Pages; in the repo settings, set Pages source to **GitHub Actions**. Do not commit a real guest list — the site is public.

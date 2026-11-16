@@ -385,7 +385,23 @@ textarea { min-height: 88px; resize: vertical; }
 
 .or-divider { text-align: center; color: var(--muted); }
 
-.member-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.member-list, .contact-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.contact-list { max-height: 46vh; overflow: auto; }
+
+.contact-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.contact-row input { width: 22px; height: 22px; margin-top: 4px; flex: none; }
+
+.contact-phone { display: block; color: var(--muted); }
+
+.import-options { display: grid; gap: 10px; }
 
 .member-list li { padding: 8px 0; border-bottom: 1px solid var(--line); }
 
