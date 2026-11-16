@@ -26,6 +26,7 @@ import {
   type WriteBatch,
 } from 'firebase/firestore'
 import { type FirebaseWebConfig } from './firebaseConfig.ts'
+import { isCommittedServerSnapshot, nextPermissionRetryDelay } from './firestoreListeners.ts'
 import type { GuestRepository } from './guestRepository.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
 import { emailVariants, normalizeWeddingName, type Wedding } from '../domain/members.ts'
@@ -110,7 +111,9 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
       const membership = query(weddings, where('memberEmails', 'array-contains', email))
       return onSnapshot(
         membership,
+        { includeMetadataChanges: true },
         (snapshot) => {
+          if (!isCommittedServerSnapshot(snapshot.metadata)) return
           listener(
             snapshot.docs.flatMap((entry) => {
               const wedding = weddingFromData(entry.id, entry.data())
@@ -168,25 +171,63 @@ function createFirestoreGuestRepository(db: Firestore, weddingId: string): Guest
 
   return {
     subscribe(listener, onError) {
-      return onSnapshot(
-        guests,
-        (snapshot) => listener(mapSnapshot(snapshot.docs)),
-        (error) => onError?.(error),
-      )
+      let cancelled = false
+      let stop = () => {}
+      let timer: ReturnType<typeof setTimeout> | undefined
+      let failures = 0
+
+      const listen = () => {
+        stop = onSnapshot(
+          guests,
+          (snapshot) => {
+            failures = 0
+            listener(mapSnapshot(snapshot.docs))
+          },
+          (error) => {
+            stop()
+            const delay = nextPermissionRetryDelay(failures, error)
+            if (cancelled || delay === null) {
+              onError?.(error)
+              return
+            }
+            failures += 1
+            timer = setTimeout(() => {
+              if (!cancelled) listen()
+            }, delay)
+          },
+        )
+      }
+
+      listen()
+      return () => {
+        cancelled = true
+        clearTimeout(timer)
+        stop()
+      }
     },
     ready() {
       return new Promise((resolve, reject) => {
-        const unsubscribe = onSnapshot(
-          guests,
-          (snapshot) => {
-            unsubscribe()
-            resolve(mapSnapshot(snapshot.docs))
-          },
-          (error) => {
-            unsubscribe()
-            reject(error)
-          },
-        )
+        let failures = 0
+        const listen = () => {
+          const unsubscribe = onSnapshot(
+            guests,
+            (snapshot) => {
+              unsubscribe()
+              resolve(mapSnapshot(snapshot.docs))
+            },
+            (error) => {
+              unsubscribe()
+              const delay = nextPermissionRetryDelay(failures, error)
+              if (delay === null) {
+                reject(error)
+                return
+              }
+              failures += 1
+              setTimeout(listen, delay)
+            },
+          )
+        }
+        listen()
       })
     },
     async create(draft) {
