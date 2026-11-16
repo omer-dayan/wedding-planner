@@ -1,17 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import { canEditSong, normalizeSong, normalizeSongUrl } from './songs.ts'
+import { canEditSong, normalizeSong, normalizeSongUrl, spotifyHref, spotifyTrackId } from './songs.ts'
 
 describe('songs', () => {
   it('requires a title and accepts only http(s) links', () => {
     expect(normalizeSongUrl('')).toBe('')
     expect(normalizeSongUrl('https://open.spotify.com/track/abc')).toBe('https://open.spotify.com/track/abc')
     expect(() => normalizeSongUrl('spotify:track:abc')).toThrow(/invalid-url/)
-    expect(() => normalizeSong({ title: '  ', artist: '', url: '', moment: null, notes: '' })).toThrow(/title-required/)
-    expect(normalizeSong({ title: '  שיר  ', artist: 'אמן', url: 'http://youtu.be/x', moment: 'dancing', notes: '' })).toMatchObject({
+    expect(() => normalizeSong({ title: '  ', artist: '', url: '', artworkUrl: '', previewUrl: '', moment: null, notes: '' })).toThrow(/title-required/)
+    expect(normalizeSong({
+      title: '  שיר  ',
+      artist: 'אמן',
+      url: 'http://youtu.be/x',
+      artworkUrl: '',
+      previewUrl: 'https://audio.example/preview.m4a',
+      moment: 'dancing',
+      notes: '',
+    })).toMatchObject({
       title: 'שיר',
       url: 'http://youtu.be/x',
+      previewUrl: 'https://audio.example/preview.m4a',
       moment: 'dancing',
     })
+  })
+
+  it('uses a pasted Spotify track link and otherwise a search link', () => {
+    expect(spotifyTrackId('https://open.spotify.com/track/abc123?si=xyz')).toBe('abc123')
+    expect(spotifyHref('שיר', 'אמן', 'https://open.spotify.com/track/abc123')).toBe('https://open.spotify.com/track/abc123')
+    expect(spotifyHref('שיר', 'אמן', '')).toBe(`https://open.spotify.com/search/${encodeURIComponent('שיר אמן')}`)
   })
 
   it('lets the author, the couple, and the owner edit a song', () => {

@@ -128,7 +128,7 @@ service cloud.firestore {
 
     function validSong(data) {
       return data.keys().hasOnly([
-          'title', 'artist', 'url', 'moment', 'notes',
+          'title', 'artist', 'url', 'moment', 'notes', 'artworkUrl', 'previewUrl',
           'addedByEmail', 'addedByName', 'addedByRole', 'createdAt', 'updatedAt'
         ])
         && data.title is string
@@ -142,6 +142,8 @@ service cloud.firestore {
         && (data.moment == null || data.moment in ['reception', 'chuppah', 'chuppah_entrance', 'glass', 'dancing', 'other'])
         && data.notes is string
         && data.notes.size() < 4000
+        && (!data.keys().hasAny(['artworkUrl']) || (data.artworkUrl is string && data.artworkUrl.size() < 500 && (data.artworkUrl == '' || data.artworkUrl.matches('https://.+'))))
+        && (!data.keys().hasAny(['previewUrl']) || (data.previewUrl is string && data.previewUrl.size() < 500 && (data.previewUrl == '' || data.previewUrl.matches('https://.+'))))
         && data.addedByEmail is string
         && data.addedByEmail.size() > 0
         && data.addedByEmail.size() < 200

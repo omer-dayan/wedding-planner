@@ -19,6 +19,8 @@ export interface SongDraft {
   title: string
   artist: string
   url: string
+  artworkUrl: string
+  previewUrl: string
   moment: SongMomentId | null
   notes: string
 }
@@ -52,13 +54,26 @@ export function normalizeSong(input: SongDraft): SongDraft {
   if (notes.length > 2000) errors.push('notes-length')
   if (input.moment !== null && !isSongMoment(input.moment)) errors.push('moment')
   let url = ''
+  let artworkUrl = ''
+  let previewUrl = ''
   try {
     url = normalizeSongUrl(input.url)
+    artworkUrl = normalizeOptionalHttps(input.artworkUrl)
+    previewUrl = normalizeOptionalHttps(input.previewUrl)
   } catch {
     errors.push('invalid-url')
   }
   if (errors.length > 0) throw new ValidationError(errors)
-  return { title, artist, url, moment: input.moment, notes }
+  return { title, artist, url, artworkUrl, previewUrl, moment: input.moment, notes }
+}
+
+function normalizeOptionalHttps(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  const url = normalizeSongUrl(trimmed)
+  if (!url.startsWith('https://')) throw new ValidationError(['invalid-url'])
+  if (url.length > 500) throw new ValidationError(['invalid-url'])
+  return url
 }
 
 export function normalizeSongUrl(value: string): string {
@@ -84,6 +99,8 @@ export function parseStoredSong(value: unknown): Song | null {
       title: typeof record.title === 'string' ? record.title : '',
       artist: typeof record.artist === 'string' ? record.artist : '',
       url: typeof record.url === 'string' ? record.url : '',
+      artworkUrl: typeof record.artworkUrl === 'string' ? record.artworkUrl : '',
+      previewUrl: typeof record.previewUrl === 'string' ? record.previewUrl : '',
       moment: isSongMoment(record.moment) ? record.moment : null,
       notes: typeof record.notes === 'string' ? record.notes : '',
     })
@@ -99,6 +116,25 @@ export function parseStoredSong(value: unknown): Song | null {
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date(0).toISOString(),
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : new Date(0).toISOString(),
   }
+}
+
+export function spotifyTrackId(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  try {
+    const url = new URL(trimmed)
+    if (url.hostname !== 'open.spotify.com') return null
+    const match = url.pathname.match(/\/track\/([A-Za-z0-9]+)/)
+    return match?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+export function spotifyHref(title: string, artist: string, pastedUrl: string): string {
+  const id = spotifyTrackId(pastedUrl)
+  if (id) return `https://open.spotify.com/track/${id}`
+  return `https://open.spotify.com/search/${encodeURIComponent(`${title} ${artist}`.replace(/\s+/g, ' ').trim())}`
 }
 
 export function canEditSong(

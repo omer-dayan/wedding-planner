@@ -74,6 +74,8 @@ function songToDoc(song: Song): Record<string, string | null> {
     url: song.url,
     moment: song.moment,
     notes: song.notes,
+    artworkUrl: song.artworkUrl,
+    previewUrl: song.previewUrl,
     addedByEmail: song.addedByEmail,
     addedByName: song.addedByName,
     addedByRole: song.addedByRole,

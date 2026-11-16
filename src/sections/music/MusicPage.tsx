@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { assignedRole, roleLabel } from '../../domain/roles.ts'
+import { searchItunesSongs, type ItunesSong } from '../../domain/itunes.ts'
 import {
   canEditSong,
   momentLabel,
   normalizeSong,
   SONG_MOMENTS,
+  spotifyHref,
+  spotifyTrackId,
   type Song,
   type SongDraft,
   type SongMomentId,
@@ -119,6 +122,7 @@ export function MusicPage() {
                 <ul className="song-list">
                   {group.songs.map((song) => (
                     <li key={song.id} className="song-card">
+                      {song.artworkUrl && <img className="song-art" src={song.artworkUrl} alt="" width={60} height={60} />}
                       <div>
                         <strong>{song.title}</strong>
                         {song.artist && <span className="cell-note">{song.artist}</span>}
@@ -127,10 +131,24 @@ export function MusicPage() {
                           {song.addedByName || 'לא ידוע'}
                           {song.addedByRole ? ` · ${roleLabel(song.addedByRole)}` : ''}
                         </p>
-                        {song.url && (
-                          <a className="text-button" href={song.url} target="_blank" rel="noopener noreferrer">
-                            לפתוח את הקישור
+                        <div className="row-actions">
+                          <a className="btn btn-spotify btn-small" href={spotifyHref(song.title, song.artist, song.url)} target="_blank" rel="noopener noreferrer">
+                            Spotify
                           </a>
+                          {song.url && !spotifyTrackId(song.url) && (
+                            <a className="text-button" href={song.url} target="_blank" rel="noopener noreferrer">
+                              לפתוח את הקישור
+                            </a>
+                          )}
+                        </div>
+                        {spotifyTrackId(song.url) && (
+                          <iframe
+                            className="spotify-embed"
+                            title="Spotify"
+                            src={`https://open.spotify.com/embed/track/${spotifyTrackId(song.url)}`}
+                            height={80}
+                            loading="lazy"
+                          />
                         )}
                       </div>
                       {canEditSong(app.wedding, app.user?.email ?? null, song) && (
@@ -179,10 +197,61 @@ function SongForm({
 }) {
   const [title, setTitle] = useState(song?.title ?? '')
   const [artist, setArtist] = useState(song?.artist ?? '')
+  const [artworkUrl, setArtworkUrl] = useState(song?.artworkUrl ?? '')
+  const [previewUrl, setPreviewUrl] = useState(song?.previewUrl ?? '')
   const [url, setUrl] = useState(song?.url ?? '')
   const [moment, setMoment] = useState<SongMomentId | ''>(song?.moment ?? '')
   const [notes, setNotes] = useState(song?.notes ?? '')
+  const [manual, setManual] = useState(song !== null)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<ItunesSong[]>([])
+  const [searching, setSearching] = useState(false)
+  const [playing, setPlaying] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const audio = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    const term = query.trim()
+    if (term.length < 2) {
+      setResults([])
+      return
+    }
+    const handle = window.setTimeout(() => {
+      setSearching(true)
+      void searchItunesSongs(term)
+        .then(setResults)
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false))
+    }, 350)
+    return () => window.clearTimeout(handle)
+  }, [query])
+
+  useEffect(() => () => audio.current?.pause(), [])
+
+  function choose(result: ItunesSong) {
+    setTitle(result.trackName)
+    setArtist(result.artistName)
+    setArtworkUrl(result.artworkUrl100)
+    setPreviewUrl(result.previewUrl)
+    setManual(true)
+    audio.current?.pause()
+    setPlaying(null)
+  }
+
+  function togglePreview(result: ItunesSong) {
+    if (!result.previewUrl) return
+    if (!audio.current) audio.current = new Audio()
+    const player = audio.current
+    if (playing === result.trackId) {
+      player.pause()
+      setPlaying(null)
+      return
+    }
+    player.src = result.previewUrl
+    void player.play()
+    setPlaying(result.trackId)
+    player.onended = () => setPlaying(null)
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -191,6 +260,8 @@ function SongForm({
         title,
         artist,
         url,
+        artworkUrl,
+        previewUrl,
         moment: moment || null,
         notes,
       })
@@ -202,35 +273,72 @@ function SongForm({
 
   return (
     <form className="stack-form" onSubmit={(event) => void handleSubmit(event)}>
-      <label className="field">
-        <span>שם השיר</span>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} />
-      </label>
-      <label className="field">
-        <span>אמן</span>
-        <input value={artist} onChange={(event) => setArtist(event.target.value)} />
-      </label>
-      <label className="field">
-        <span>קישור</span>
-        <input value={url} onChange={(event) => setUrl(event.target.value)} dir="ltr" className="ltr-field" inputMode="url" placeholder="https://" />
-      </label>
-      <label className="field">
-        <span>רגע</span>
-        <select value={moment} onChange={(event) => setMoment(event.target.value as SongMomentId | '')}>
-          <option value="">ללא רגע</option>
-          {SONG_MOMENTS.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
+      {!song && (
+        <label className="field">
+          <span>חיפוש שיר</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="שם שיר או אמן" />
+        </label>
+      )}
+      {searching && <p className="hint">מחפשים…</p>}
+      {results.length > 0 && (
+        <ul className="itunes-list">
+          {results.map((result) => (
+            <li key={result.trackId}>
+              <button type="button" className="itunes-row" onClick={() => choose(result)}>
+                {result.artworkUrl100 && <img src={result.artworkUrl100} alt="" width={60} height={60} />}
+                <span>
+                  <strong>{result.trackName}</strong>
+                  <span className="cell-note">{result.artistName}</span>
+                  {result.collectionName && <span className="cell-note">{result.collectionName}</span>}
+                </span>
+              </button>
+              {result.previewUrl && (
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => togglePreview(result)}>
+                  {playing === result.trackId ? 'השהיה' : 'השמעה'}
+                </button>
+              )}
+            </li>
           ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>הערה</span>
-        <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} />
-      </label>
+        </ul>
+      )}
+      {!song && !manual && (
+        <button type="button" className="text-button" onClick={() => setManual(true)}>
+          לא מצאתם? הקלידו ידנית
+        </button>
+      )}
+      {manual && (
+        <>
+          <label className="field">
+            <span>שם השיר</span>
+            <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+          <label className="field">
+            <span>אמן</span>
+            <input value={artist} onChange={(event) => setArtist(event.target.value)} />
+          </label>
+          <label className="field">
+            <span>קישור</span>
+            <input value={url} onChange={(event) => setUrl(event.target.value)} dir="ltr" className="ltr-field" inputMode="url" placeholder="https:// או Spotify" />
+          </label>
+          <label className="field">
+            <span>רגע</span>
+            <select value={moment} onChange={(event) => setMoment(event.target.value as SongMomentId | '')}>
+              <option value="">ללא רגע</option>
+              {SONG_MOMENTS.map((item) => (
+                <option key={item.id} value={item.id}>{item.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>הערה</span>
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} />
+          </label>
+        </>
+      )}
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={saving}>ביטול</button>
-        <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'שומר…' : 'שמירה'}</button>
+        {manual && <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'שומר…' : 'שמירה'}</button>}
       </div>
     </form>
   )
