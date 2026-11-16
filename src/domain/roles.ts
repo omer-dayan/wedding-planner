@@ -70,6 +70,14 @@ export function canEditGuest(
   return guest.role !== null && guest.role === assignedRole(wedding, email)
 }
 
+export function isCoupleOrOwner(wedding: RoleAssignment | null, email: string | null): boolean {
+  if (!email || !wedding) return true
+  const me = email.trim().toLowerCase()
+  if (wedding.ownerEmail.trim().toLowerCase() === me) return true
+  const stored = wedding.memberRoles?.[me]
+  return stored === 'groom' || stored === 'bride'
+}
+
 export function cleanMemberRoles(value: unknown): Record<string, WeddingRoleId> {
   if (!value || typeof value !== 'object') return {}
   const roles: Record<string, WeddingRoleId> = {}

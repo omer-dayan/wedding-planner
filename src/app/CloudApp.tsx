@@ -181,9 +181,13 @@ function WeddingSession({
   onSelectWedding: (id: string) => void
 }) {
   const guests = useMemo(() => services.createGuestRepository(wedding.id), [services, wedding.id])
+  const songs = useMemo(() => services.createSongRepository(wedding.id), [services, wedding.id])
+  const venues = useMemo(() => services.createVenueRepository(wedding.id), [services, wedding.id])
   const value: AppServices = {
     mode: 'cloud',
     guests,
+    songs,
+    venues,
     user,
     wedding,
     weddings,

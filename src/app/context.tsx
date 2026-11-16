@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { AppContext } from './appContext.ts'
 import type { GuestRepository } from '../data/guestRepository.ts'
+import type { SongRepository } from '../data/songRepository.ts'
+import type { VenueRepository } from '../data/venueRepository.ts'
 import type { Wedding } from '../domain/members.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
 
@@ -12,6 +14,8 @@ export interface SessionUser {
 export interface AppServices {
   mode: 'local' | 'cloud'
   guests: GuestRepository
+  songs: SongRepository
+  venues: VenueRepository
   user: SessionUser | null
   wedding: Wedding | null
   weddings: readonly Wedding[]

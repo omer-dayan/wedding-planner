@@ -122,6 +122,66 @@ service cloud.firestore {
         );
     }
 
+    function canModerate(weddingId) {
+      return isOwner(weddingId) || myRole(weddingId) == 'groom' || myRole(weddingId) == 'bride';
+    }
+
+    function validSong(data) {
+      return data.keys().hasOnly([
+          'title', 'artist', 'url', 'moment', 'notes',
+          'addedByEmail', 'addedByName', 'addedByRole', 'createdAt', 'updatedAt'
+        ])
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() < 200
+        && data.artist is string
+        && data.artist.size() < 200
+        && data.url is string
+        && data.url.size() < 500
+        && (data.url == '' || data.url.matches('https?://.+'))
+        && (data.moment == null || data.moment in ['reception', 'chuppah', 'chuppah_entrance', 'glass', 'dancing', 'other'])
+        && data.notes is string
+        && data.notes.size() < 4000
+        && data.addedByEmail is string
+        && data.addedByEmail.size() > 0
+        && data.addedByEmail.size() < 200
+        && data.addedByName is string
+        && data.addedByName.size() < 200
+        && (data.addedByRole == null || knownRole(data.addedByRole))
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
+    function validVenue(data) {
+      return data.keys().hasOnly([
+          'name', 'city', 'phone', 'website', 'priceNotes', 'status', 'visitDate', 'notes',
+          'tiktokUrls', 'addedByEmail', 'createdAt', 'updatedAt'
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() < 200
+        && data.city is string
+        && data.city.size() < 120
+        && data.phone is string
+        && data.phone.size() < 50
+        && data.website is string
+        && data.website.size() < 500
+        && (data.website == '' || data.website.matches('https?://.+'))
+        && data.priceNotes is string
+        && data.priceNotes.size() < 500
+        && data.status in ['want', 'scheduled', 'visited', 'rejected', 'chosen']
+        && data.visitDate is string
+        && data.visitDate.size() < 40
+        && data.notes is string
+        && data.notes.size() < 4000
+        && data.tiktokUrls is list
+        && data.tiktokUrls.size() <= 20
+        && data.addedByEmail is string
+        && data.addedByEmail.size() < 200
+        && data.createdAt is string
+        && data.updatedAt is string;
+    }
+
     match /weddings/{weddingId} {
       allow read: if signedIn() && myEmail() in resource.data.memberEmails;
 
@@ -149,6 +209,34 @@ service cloud.firestore {
           && (!isRestricted(weddingId) || resource.data.role == myRole(weddingId));
         allow delete: if isMember(weddingId)
           && (!isRestricted(weddingId) || resource.data.role == myRole(weddingId));
+      }
+
+      match /songs/{songId} {
+        allow read: if isMember(weddingId);
+        allow create: if isMember(weddingId)
+          && validSong(request.resource.data)
+          && request.resource.data.addedByEmail == myEmail().lower();
+        allow update: if isMember(weddingId)
+          && validSong(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.addedByEmail == resource.data.addedByEmail
+          && (canModerate(weddingId) || resource.data.addedByEmail == myEmail().lower());
+        allow delete: if isMember(weddingId)
+          && (canModerate(weddingId) || resource.data.addedByEmail == myEmail().lower());
+      }
+
+      match /venues/{venueId} {
+        allow read: if isMember(weddingId);
+        allow create: if isMember(weddingId)
+          && canModerate(weddingId)
+          && validVenue(request.resource.data)
+          && request.resource.data.addedByEmail == myEmail().lower();
+        allow update: if isMember(weddingId)
+          && canModerate(weddingId)
+          && validVenue(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.addedByEmail == resource.data.addedByEmail;
+        allow delete: if isMember(weddingId) && canModerate(weddingId);
       }
     }
   }

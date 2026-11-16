@@ -25,7 +25,12 @@ export function AppShell() {
         </div>
         <nav className="nav" aria-label="ניווט ראשי">
           {sections.map((item) => (
-            <a key={item.id} href={`#/${item.id}`} aria-current={item.id === current.id ? 'page' : undefined}>
+            <a
+              key={item.id}
+              className={item.id === 'settings' ? 'nav-settings' : 'nav-section'}
+              href={`#/${item.id}`}
+              aria-current={item.id === current.id ? 'page' : undefined}
+            >
               {item.label}
             </a>
           ))}
@@ -40,6 +45,15 @@ export function AppShell() {
         </div>
       </aside>
       <main className="content" id="content">
+        <nav className="section-tabs" aria-label="מעבר בין חלקי האפליקציה">
+          {sections
+            .filter((item) => item.id === 'guests' || item.id === 'music' || item.id === 'venues')
+            .map((item) => (
+              <a key={item.id} href={`#/${item.id}`} aria-current={item.id === current.id ? 'page' : undefined}>
+                {item.label}
+              </a>
+            ))}
+        </nav>
         <Section />
       </main>
     </div>

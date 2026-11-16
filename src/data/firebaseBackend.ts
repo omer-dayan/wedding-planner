@@ -28,6 +28,10 @@ import {
 import { type FirebaseWebConfig } from './firebaseConfig.ts'
 import { isCommittedServerSnapshot, nextPermissionRetryDelay } from './firestoreListeners.ts'
 import type { GuestRepository } from './guestRepository.ts'
+import type { SongRepository } from './songRepository.ts'
+import { createFirestoreSongRepository } from './firestoreSongs.ts'
+import { createFirestoreVenueRepository } from './firestoreVenues.ts'
+import type { VenueRepository } from './venueRepository.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
 import { emailVariants, normalizeWeddingName, type Wedding } from '../domain/members.ts'
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
@@ -47,6 +51,8 @@ export interface FirebaseServices {
   auth: Auth
   db: Firestore
   createGuestRepository: (weddingId: string) => GuestRepository
+  createSongRepository: (weddingId: string) => SongRepository
+  createVenueRepository: (weddingId: string) => VenueRepository
   createWeddingRepository: (email: string) => WeddingRepository
 }
 
@@ -68,6 +74,8 @@ export function createFirebaseServices(config: FirebaseWebConfig): FirebaseServi
     auth,
     db,
     createGuestRepository: (weddingId) => createFirestoreGuestRepository(db, weddingId),
+    createSongRepository: (weddingId) => createFirestoreSongRepository(db, weddingId),
+    createVenueRepository: (weddingId) => createFirestoreVenueRepository(db, weddingId),
     createWeddingRepository: (email) => createFirestoreWeddingRepository(db, email),
   }
   return services
