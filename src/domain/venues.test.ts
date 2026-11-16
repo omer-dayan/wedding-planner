@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canManageVenues, mapsSearchUrl, normalizeVenue, tiktokSearchUrl, tiktokVideoId } from './venues.ts'
+import { canManageVenues, googleTikTokVideoSearchUrl, mapsSearchUrl, normalizeVenue, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery } from './venues.ts'
 
 describe('venues', () => {
   it('requires a name and reads a TikTok video id', () => {
@@ -16,7 +16,12 @@ describe('venues', () => {
     })).toThrow(/venue-name-required/)
     expect(tiktokVideoId('https://www.tiktok.com/@hall/video/1234567890')).toBe('1234567890')
     expect(tiktokVideoId('https://vm.tiktok.com/ZMabc/')).toBeNull()
-    expect(tiktokSearchUrl('גן ורדים', 'תל אביב')).toContain(encodeURIComponent('גן ורדים תל אביב אולם'))
+    const query = venueVideoQuery('גן ורדים', 'תל אביב')
+    expect(query).toBe('גן ורדים תל אביב אולם')
+    expect(venueVideoQuery('אולם גן ורדים', 'חיפה')).toBe('אולם גן ורדים חיפה')
+    expect(tiktokAppSearchUrl(query)).toBe(`tiktok://search?keyword=${encodeURIComponent(query)}`)
+    expect(tiktokWebVideoSearchUrl(query)).toBe(`https://www.tiktok.com/search/video?q=${encodeURIComponent(query)}`)
+    expect(googleTikTokVideoSearchUrl('גן ורדים', 'תל אביב')).toContain('site%3Atiktok.com')
     expect(mapsSearchUrl('גן ורדים', 'תל אביב')).toContain('query=')
   })
 

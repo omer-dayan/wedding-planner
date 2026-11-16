@@ -3,13 +3,16 @@ import type { FormEvent } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import {
   canManageVenues,
+  googleTikTokVideoSearchUrl,
   mapsSearchUrl,
   normalizeTikTokUrl,
   normalizeVenue,
-  tiktokSearchUrl,
+  tiktokAppSearchUrl,
   tiktokVideoId,
+  tiktokWebVideoSearchUrl,
   VENUE_STATUSES,
   venueStatusLabel,
+  venueVideoQuery,
   type Venue,
   type VenueDraft,
   type VenueStatusId,
@@ -109,8 +112,11 @@ export function VenuesPage() {
                     {venue.visitDate && <span className="cell-note">ביקור: {venue.visitDate}</span>}
                     {venue.notes && <span className="cell-note">{venue.notes}</span>}
                     <div className="row-actions">
-                      <a className="btn btn-primary btn-small" href={tiktokSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
+                      <button type="button" className="btn btn-primary btn-small" onClick={() => openTikTokVideos(venue.name, venue.city)}>
                         סרטונים בטיקטוק
+                      </button>
+                      <a className="btn btn-ghost btn-small" href={googleTikTokVideoSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
+                        Google סרטוני טיקטוק
                       </a>
                       <a className="btn btn-ghost btn-small" href={mapsSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
                         מפה
@@ -148,6 +154,23 @@ export function VenuesPage() {
       </Dialog>
     </section>
   )
+}
+
+function openTikTokVideos(name: string, city: string) {
+  const query = venueVideoQuery(name, city)
+  const web = tiktokWebVideoSearchUrl(query)
+  let left = false
+  const markLeft = () => {
+    if (document.hidden) left = true
+  }
+  document.addEventListener('visibilitychange', markLeft)
+  window.location.href = tiktokAppSearchUrl(query)
+  window.setTimeout(() => {
+    document.removeEventListener('visibilitychange', markLeft)
+    if (left || document.hidden) return
+    const tab = window.open(web, '_blank', 'noopener')
+    if (!tab) window.location.assign(web)
+  }, 1500)
 }
 
 function VenueVideos({ urls }: { urls: readonly string[] }) {

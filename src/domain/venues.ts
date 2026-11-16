@@ -81,9 +81,26 @@ export function normalizeTikTokUrl(value: string): string {
   return url.toString()
 }
 
-export function tiktokSearchUrl(name: string, city: string): string {
-  const query = `${name} ${city} אולם`.replace(/\s+/g, ' ').trim()
-  return `https://www.tiktok.com/search?q=${encodeURIComponent(query)}`
+export function venueVideoQuery(name: string, city: string): string {
+  const cleanName = name.replace(/\s+/g, ' ').trim()
+  const cleanCity = city.replace(/\s+/g, ' ').trim()
+  const base = [cleanName, cleanCity].filter(Boolean).join(' ')
+  if (cleanName.includes('אולם')) return base
+  return `${base} אולם`.trim()
+}
+
+/** iOS registers tiktok://. keyword= asks the app to open search results, not a blank box. */
+export function tiktokAppSearchUrl(query: string): string {
+  return `tiktok://search?keyword=${encodeURIComponent(query)}`
+}
+
+/** Mobile web /search?q= ignores the query. The video tab URL is the fallback. */
+export function tiktokWebVideoSearchUrl(query: string): string {
+  return `https://www.tiktok.com/search/video?q=${encodeURIComponent(query)}`
+}
+
+export function googleTikTokVideoSearchUrl(name: string, city: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${venueVideoQuery(name, city)} site:tiktok.com`)}`
 }
 
 export function mapsSearchUrl(name: string, city: string): string {
