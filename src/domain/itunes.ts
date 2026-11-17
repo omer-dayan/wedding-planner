@@ -1,3 +1,5 @@
+import { sameSongTitleArtist } from './songs.ts'
+
 export interface ItunesSong {
   trackId: number
   trackName: string
@@ -5,6 +7,16 @@ export interface ItunesSong {
   collectionName: string
   artworkUrl100: string
   previewUrl: string
+}
+
+export async function lookupItunesSong(title: string, artist: string, fetchImpl: typeof fetch = fetch): Promise<ItunesSong | null> {
+  const term = `${title} ${artist}`.replace(/\s+/g, ' ').trim()
+  if (term.length < 2) return null
+  const results = await searchItunesSongs(term, fetchImpl)
+  return results.find((song) => sameSongTitleArtist(
+    { title: song.trackName, artist: song.artistName },
+    { title, artist },
+  )) ?? null
 }
 
 export async function searchItunesSongs(term: string, fetchImpl: typeof fetch = fetch): Promise<ItunesSong[]> {

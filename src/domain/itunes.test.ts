@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { searchItunesSongs } from './itunes.ts'
+import { lookupItunesSong, searchItunesSongs } from './itunes.ts'
 
 describe('searchItunesSongs', () => {
   it('queries Israel first and adds US tracks only when Israel is thin', async () => {
@@ -18,5 +18,17 @@ describe('searchItunesSongs', () => {
     expect(calls[1]).toContain('country=US')
     expect(songs.map((song) => song.trackId)).toEqual([1, 2])
     expect(await searchItunesSongs('א', fetchImpl)).toEqual([])
+  })
+
+  it('backfills only an exact title and artist match', async () => {
+    const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({
+      results: [
+        { trackId: 9, trackName: 'שיר אחר', artistName: 'Omer Adam', artworkUrl100: 'https://example/x.jpg', previewUrl: 'https://example/x.m4a' },
+        { trackId: 1, trackName: 'מלכת הדור', artistName: 'Omer Adam', artworkUrl100: 'https://example/a.jpg', previewUrl: 'https://example/a.m4a' },
+      ],
+    }))
+    const match = await lookupItunesSong('מלכת הדור', 'omer adam', fetchImpl)
+    expect(match?.trackId).toBe(1)
+    expect(await lookupItunesSong('אין כזה', 'אמן', fetchImpl)).toBeNull()
   })
 })
