@@ -38,6 +38,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  touch-action: manipulation;
   background:
     radial-gradient(1200px 500px at 100% -10%, rgba(120, 176, 146, 0.28), transparent 55%),
     radial-gradient(900px 420px at -10% 20%, rgba(47, 109, 79, 0.1), transparent 50%),
@@ -384,6 +385,8 @@ textarea { min-height: 88px; resize: vertical; }
 
 .storage-note { margin-top: 18px; font-size: 0.9rem; }
 
+.build-id { color: var(--muted); font-size: 0.8rem; margin-top: 18px; }
+
 .dialog {
   border: 0;
   padding: 0;
@@ -622,3 +625,7 @@ textarea { min-height: 88px; resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto; }
 }
+
+html, body { touch-action: manipulation; }
+
+input, select, textarea { font-size: 16px !important; }

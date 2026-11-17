@@ -30,6 +30,7 @@ export function SettingsPage() {
             עם בן או בת הזוג, חברו פרויקט Firebase לפי ההוראות בקובץ README.
           </p>
         </div>
+        <BuildStamp />
       </section>
     )
   }
@@ -187,8 +188,13 @@ export function SettingsPage() {
           </p>
         )}
       </div>
+      <BuildStamp />
     </section>
   )
+}
+
+function BuildStamp() {
+  return <p className="build-id">גרסה: {__BUILD_ID__}</p>
 }
 
 function WeddingNameForm({
