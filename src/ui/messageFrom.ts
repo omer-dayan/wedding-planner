@@ -6,20 +6,27 @@ export function firebaseCode(error: unknown): string {
   return ''
 }
 
-export function mapFirebaseCode(code: string): string {
-  if (code.includes('popup-blocked')) return 'popup-blocked'
-  if (code.includes('unauthorized-domain')) return 'unauthorized-domain'
-  if (code.includes('network-request-failed')) return 'network-auth'
-  if (code.includes('permission-denied')) return 'permission-denied'
-  if (code.includes('popup-closed') || code.includes('cancelled-popup')) return 'popup-closed'
-  if (!code) return 'unknown'
+export function mapFirebaseCode(code: string, message = ''): string {
+  const text = `${code} ${message}`.toLowerCase()
+  if (text.includes('popup-closed') || text.includes('cancelled-popup')) return 'popup-closed'
+  if (text.includes('missing initial state') || text.includes('storage-partitioned') || text.includes('sessionstorage')) return 'auth-storage'
+  if (text.includes('popup-blocked')) return 'popup-blocked'
+  if (text.includes('unauthorized-domain')) return 'unauthorized-domain'
+  if (text.includes('network-request-failed')) return 'network-auth'
+  if (text.includes('permission-denied')) return 'permission-denied'
+  if (!code && !message) return 'unknown'
   return 'auth-failed'
+}
+
+export function mapAuthError(error: unknown): string {
+  const message = error instanceof Error ? error.message : ''
+  return mapFirebaseCode(firebaseCode(error), message)
 }
 
 export function messageFrom(error: unknown): string {
   if (error instanceof ValidationError) return errorText(error.errors[0] ?? 'unknown')
   if (error instanceof DomainError) return errorText(error.code)
-  const mapped = mapFirebaseCode(firebaseCode(error))
+  const mapped = mapAuthError(error)
   if (mapped === 'popup-closed') return ''
   return errorText(mapped)
 }

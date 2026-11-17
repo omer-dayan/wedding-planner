@@ -1,14 +1,19 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  initializeAuth,
   signInWithPopup,
   signInWithRedirect,
   signOut,
   type Auth,
   type User,
 } from 'firebase/auth'
+import { clearAuthFlow, markAuthPending, markAuthRedirect } from '../app/authPending.ts'
 import {
   collection,
   doc,
@@ -41,8 +46,6 @@ import { emailVariants, normalizeWeddingDate, normalizeWeddingName, type Wedding
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
 import { normalizeDraft, parseStoredGuest } from '../domain/validation.ts'
 import type { Guest } from '../domain/types.ts'
-
-export const AUTH_REDIRECT_KEY = 'wedding-planner.auth-redirect'
 
 export interface WeddingRepository {
   subscribe(listener: (weddings: Wedding[]) => void, onError?: (error: unknown) => void): () => void
@@ -79,7 +82,7 @@ export function createFirebaseServices(config: FirebaseWebConfig): FirebaseServi
     storageBucket: config.storageBucket || undefined,
     messagingSenderId: config.messagingSenderId || undefined,
   })
-  const auth = getAuth(app)
+  const auth = createAuth(app)
   const db = getFirestore(app)
   services = {
     auth,
@@ -93,27 +96,62 @@ export function createFirebaseServices(config: FirebaseWebConfig): FirebaseServi
   return services
 }
 
-export async function signInWithGoogle(auth: Auth): Promise<void> {
-  const provider = new GoogleAuthProvider()
-  provider.setCustomParameters({ prompt: 'select_account' })
+export function createAuth(app: FirebaseApp): Auth {
   try {
-    await signInWithPopup(auth, provider)
+    return initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver,
+    })
   } catch (error) {
-    const code = firebaseErrorCode(error)
-    if (code === 'auth/popup-blocked') {
-      sessionStorage.setItem(AUTH_REDIRECT_KEY, '1')
-      await signInWithRedirect(auth, provider)
-      return
-    }
+    if (firebaseErrorCode(error) === 'auth/already-initialized') return getAuth(app)
     throw error
   }
 }
 
+export function shouldUseRedirect(code: string): boolean {
+  return code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment'
+}
+
+export function isQuietAuthError(code: string): boolean {
+  return code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'
+}
+
+export function signInWithGoogle(
+  auth: Auth,
+  impl: {
+    popup: (auth: Auth, provider: GoogleAuthProvider) => Promise<unknown>
+    redirect: (auth: Auth, provider: GoogleAuthProvider) => Promise<unknown>
+  } = { popup: signInWithPopup, redirect: signInWithRedirect },
+): Promise<void> {
+  markAuthPending()
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  return impl.popup(auth, provider).then(
+    () => {
+      clearAuthFlow()
+    },
+    (error: unknown) => {
+      const code = firebaseErrorCode(error)
+      if (shouldUseRedirect(code)) {
+        markAuthRedirect()
+        return impl.redirect(auth, provider).then(() => undefined)
+      }
+      clearAuthFlow()
+      if (isQuietAuthError(code)) return
+      throw error
+    },
+  )
+}
+
 export async function completeRedirectSignIn(auth: Auth): Promise<User | null> {
-  if (sessionStorage.getItem(AUTH_REDIRECT_KEY) !== '1') return null
-  sessionStorage.removeItem(AUTH_REDIRECT_KEY)
-  const result = await getRedirectResult(auth)
-  return result?.user ?? null
+  try {
+    const result = await getRedirectResult(auth)
+    clearAuthFlow()
+    return result?.user ?? null
+  } catch (error) {
+    clearAuthFlow()
+    throw error
+  }
 }
 
 export async function signOutUser(auth: Auth): Promise<void> {

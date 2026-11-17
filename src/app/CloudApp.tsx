@@ -15,7 +15,7 @@ import { assignedRole, cleanMemberRoles, isCoupleOrOwner } from '../domain/roles
 import type { WeddingRoleId } from '../domain/roles.ts'
 import { SignInScreen } from '../auth/SignInScreen.tsx'
 import { AppShell } from '../layout/AppShell.tsx'
-import { firebaseCode, mapFirebaseCode, messageFrom } from '../ui/messageFrom.ts'
+import { mapAuthError, messageFrom } from '../ui/messageFrom.ts'
 import { Rings } from '../ui/Rings.tsx'
 import { Splash } from '../ui/Splash.tsx'
 import { AppServicesProvider, type AppServices, type SessionUser } from './context.tsx'
@@ -55,7 +55,7 @@ export function CloudApp({ config }: { config: FirebaseWebConfig }) {
     let active = true
     void completeRedirectSignIn(services.auth).catch((error: unknown) => {
       if (!active) return
-      const code = mapFirebaseCode(firebaseCode(error))
+      const code = mapAuthError(error)
       if (code !== 'popup-closed') setErrorCode(code)
     })
     const unsubscribe = onAuthStateChanged(
@@ -78,17 +78,18 @@ export function CloudApp({ config }: { config: FirebaseWebConfig }) {
     }
   }, [services.auth])
 
-  async function onGoogle() {
+  function onGoogle() {
+    const attempt = signInWithGoogle(services.auth)
     setBusy(true)
     setErrorCode(null)
-    try {
-      await signInWithGoogle(services.auth)
-    } catch (error) {
-      const code = mapFirebaseCode(firebaseCode(error))
-      if (code !== 'popup-closed') setErrorCode(code)
-    } finally {
-      setBusy(false)
-    }
+    void attempt.then(
+      () => setBusy(false),
+      (error: unknown) => {
+        const code = mapAuthError(error)
+        if (code !== 'popup-closed') setErrorCode(code)
+        setBusy(false)
+      },
+    )
   }
 
   if (!ready) return <Splash label="טוען…" />

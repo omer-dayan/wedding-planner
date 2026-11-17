@@ -8,7 +8,7 @@ export function SignInScreen({
 }: {
   busy: boolean
   errorCode: string | null
-  onGoogle: () => Promise<void>
+  onGoogle: () => void
 }) {
   return (
     <main className="sign-in" data-testid="sign-in">
@@ -19,9 +19,10 @@ export function SignInScreen({
         <p className="lede">רשימת המוזמנים נשמרת בענן וזמינה גם בטלפון וגם במחשב.</p>
         <p>אחרי ההתחברות אפשר לשתף את הרשימה עם בן או בת הזוג, לפי כתובת ה-Google שלהם.</p>
         {errorCode && (
-          <p className="form-error" role="alert">
-            {errorText(errorCode)}
-          </p>
+          <>
+            <p className="form-error" role="alert">{errorText(errorCode)}</p>
+            <p className="hint">אם זה קורה מהאפליקציה במסך הבית, פתחו את האתר בספארי והתחברו שם פעם אחת.</p>
+          </>
         )}
         <button
           type="button"
@@ -30,7 +31,7 @@ export function SignInScreen({
           disabled={busy}
           onClick={() => void onGoogle()}
         >
-          {busy ? 'מתחברים…' : 'התחברות עם Google'}
+          {busy ? 'מתחברים…' : errorCode ? 'נסו שוב' : 'התחברות עם Google'}
         </button>
         <p className="fine-print">ההתחברות היא עם חשבון Google. הנתונים גלויים רק למי שנוסף לרשימת השותפים.</p>
       </section>

@@ -71,6 +71,13 @@ describe('version check', () => {
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
+  it('does not reload during an in-progress sign-in', async () => {
+    const { input, replace, storage } = harness({ allowReload: () => false })
+    await checkForUpdate(input)
+    expect(replace).not.toHaveBeenCalled()
+    expect(storage.has(RELOAD_GUARD_KEY)).toBe(false)
+  })
+
   it('stays put when the version file cannot be read', async () => {
     const { input, replace } = harness()
     input.fetchImpl = vi.fn(async () => {

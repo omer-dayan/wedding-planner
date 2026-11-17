@@ -1,3 +1,5 @@
+import { isAuthFlowPending } from './authPending.ts'
+
 export const VERSION_CHECK_GAP_MS = 60_000
 export const RELOAD_GUARD_KEY = 'wedding-planner.reloaded-for'
 
@@ -31,6 +33,7 @@ export interface VersionCheck {
   pathname: string
   hash: string
   replace: (url: string) => void
+  allowReload?: () => boolean
 }
 
 export async function checkForUpdate(input: VersionCheck): Promise<{ lastCheck: number }> {
@@ -52,6 +55,7 @@ export async function checkForUpdate(input: VersionCheck): Promise<{ lastCheck: 
     }
   }
   if (decision === 'reload' && remoteId) {
+    if (input.allowReload && !input.allowReload()) return { lastCheck }
     try {
       input.storage.setItem(RELOAD_GUARD_KEY, remoteId)
     } catch {
@@ -84,6 +88,7 @@ export function startVersionCheck(): () => void {
       pathname: window.location.pathname,
       hash: window.location.hash,
       replace: (url) => window.location.replace(url),
+      allowReload: () => !isAuthFlowPending(),
     }).then((result) => {
       state.lastCheck = result.lastCheck
     })
