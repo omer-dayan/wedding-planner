@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppServices } from '../app/useAppServices.ts'
 import { useHashSection } from '../app/useHashSection.ts'
 import { unreadCount } from '../domain/activity.ts'
@@ -52,12 +52,12 @@ export function AppShell() {
     <div className="app-shell">
       <a className="skip-link" href="#content">דילוג לתוכן</a>
       <aside className="sidebar">
-        <div className="brand">
-          <Flower />
-          <div>
-            <p className="brand-kicker">{app.wedding?.name ?? 'החתונה שלנו'}</p>
-            <p className="brand-title">תכנון חתונה</p>
+        <div className="sidebar-top">
+          <div className="brand">
+            <Flower />
+            <p className="brand-title">{app.wedding?.name ?? 'החתונה שלנו'}</p>
           </div>
+          <AccountMenu />
         </div>
         <nav className="nav" aria-label="ניווט ראשי">
           {sections.filter((item) => item.id !== 'home' || canSeeFeed).map((item) => (
@@ -72,12 +72,6 @@ export function AppShell() {
             </a>
           ))}
         </nav>
-        <div className="sidebar-foot">
-          <p className="sidebar-note">{app.mode === 'local' ? 'שמירה מקומית במכשיר זה' : app.user?.email}</p>
-          {app.onSignOut && (
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => void app.onSignOut?.()}>התנתקות</button>
-          )}
-        </div>
       </aside>
       <main className="content" id="content">
         <nav className="section-tabs" aria-label="מעבר בין חלקי האפליקציה" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
@@ -91,6 +85,42 @@ export function AppShell() {
         </nav>
         <Section />
       </main>
+    </div>
+  )
+}
+
+function AccountMenu() {
+  const app = useAppServices()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const name = app.user?.displayName || 'ח'
+  const initials = name.includes('@')
+    ? name.slice(0, 1).toUpperCase()
+    : name.trim().split(/\s+/).slice(0, 2).map((part) => part.slice(0, 1)).join('')
+
+  useEffect(() => {
+    if (!open) return
+    const close = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [open])
+
+  return (
+    <div className="account" ref={ref}>
+      <button type="button" className="avatar-button" aria-label="תפריט חשבון" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        {app.user?.photoUrl ? <img src={app.user.photoUrl} alt="" /> : <span>{initials || 'ח'}</span>}
+      </button>
+      {open && (
+        <div className="account-menu" role="menu">
+          <a href="#/settings" role="menuitem" onClick={() => setOpen(false)}>הגדרות</a>
+          <p className="account-email">{app.mode === 'local' ? 'שמירה מקומית במכשיר זה' : app.user?.email}</p>
+          {app.onSignOut && (
+            <button type="button" role="menuitem" onClick={() => void app.onSignOut?.()}>התנתקות</button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

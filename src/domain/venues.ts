@@ -38,6 +38,25 @@ export function venueStatusLabel(status: VenueStatusId): string {
   return VENUE_STATUSES.find((item) => item.id === status)?.label ?? 'רוצים לראות'
 }
 
+const STATUS_ORDER: Record<VenueStatusId, number> = {
+  chosen: 0,
+  scheduled: 1,
+  visited: 2,
+  want: 3,
+  rejected: 4,
+}
+
+export function compareVenues(left: Venue, right: Venue): number {
+  const rank = STATUS_ORDER[left.status] - STATUS_ORDER[right.status]
+  if (rank !== 0) return rank
+  if (left.visitDate !== right.visitDate) {
+    if (!left.visitDate) return 1
+    if (!right.visitDate) return -1
+    return left.visitDate.localeCompare(right.visitDate)
+  }
+  return left.name.localeCompare(right.name, 'he')
+}
+
 export function normalizeWebsite(value: string): string {
   const trimmed = value.trim()
   if (!trimmed) return ''

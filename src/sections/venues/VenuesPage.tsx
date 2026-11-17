@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import {
   canManageVenues,
+  compareVenues,
   googleTikTokVideoSearchUrl,
   mapsSearchUrl,
   normalizeTikTokUrl,
@@ -18,6 +19,7 @@ import {
   type VenueStatusId,
 } from '../../domain/venues.ts'
 import { Fab } from '../../ui/Fab.tsx'
+import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
 
@@ -29,6 +31,8 @@ export function VenuesPage() {
   const [editing, setEditing] = useState<Venue | 'new' | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [picking, setPicking] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<Venue | null>(null)
   const manage = canManageVenues(app.wedding, app.user?.email ?? null)
 
   useEffect(() => {
@@ -41,7 +45,16 @@ export function VenuesPage() {
     )
   }, [app.venues])
 
-  const visible = (venues ?? []).filter((venue) => status === 'all' || venue.status === status)
+  const visible = useMemo(
+    () => (venues ?? []).filter((venue) => status === 'all' || venue.status === status).sort(compareVenues),
+    [venues, status],
+  )
+  const counts = useMemo(() => {
+    const next = new Map<VenueStatusId | 'all', number>([['all', venues?.length ?? 0]])
+    for (const item of VENUE_STATUSES) next.set(item.id, 0)
+    for (const venue of venues ?? []) next.set(venue.status, (next.get(venue.status) ?? 0) + 1)
+    return next
+  }, [venues])
 
   async function save(draft: VenueDraft) {
     setSaving(true)
@@ -55,6 +68,17 @@ export function VenuesPage() {
       throw failure
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function changeStatus(venue: Venue, next: VenueStatusId) {
+    setPicking(null)
+    if (next === venue.status) return
+    setError(null)
+    try {
+      await app.venues.update(venue.id, { ...venue, status: next })
+    } catch (failure) {
+      setError(messageFrom(failure))
     }
   }
 
@@ -72,13 +96,7 @@ export function VenuesPage() {
       <header className="page-header">
         <div>
           <h1>אולמות</h1>
-          <p>אולמות לביקור. סרטונים נפתחים מטיקטוק, בלי חיבור לשרת.</p>
         </div>
-        {manage && (
-          <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
-            הוספת אולם
-          </button>
-        )}
       </header>
       {loadError && <p className="form-error" role="alert">{loadError}</p>}
       {error && !editing && <p className="form-error" role="alert">{error}</p>}
@@ -87,55 +105,92 @@ export function VenuesPage() {
         <p className="hint">טוען אולמות…</p>
       ) : (
         <>
-          <label className="field">
-            <span>סטטוס</span>
-            <select value={status} onChange={(event) => setStatus(event.target.value as VenueStatusId | 'all')}>
-              <option value="all">הכל</option>
-              {VENUE_STATUSES.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
+          <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
+            <FilterChip active={status === 'all'} count={counts.get('all') ?? 0} onClick={() => setStatus('all')}>הכל</FilterChip>
+            {VENUE_STATUSES.map((item) => (
+              <FilterChip key={item.id} active={status === item.id} count={counts.get(item.id) ?? 0} onClick={() => setStatus(item.id)}>
+                {item.label}
+              </FilterChip>
+            ))}
+          </div>
           {venues.length === 0 ? (
             <div className="empty">
               <h2>עדיין אין אולמות</h2>
+              <p>הוסיפו את המקום הראשון שתרצו לבקר.</p>
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="empty">
+              <h2>אין אולמות בסטטוס הזה</h2>
             </div>
           ) : (
-            <ul className="song-list">
+            <ul className="venue-list">
               {visible.map((venue) => (
-                <li key={venue.id} className="song-card venue-card">
-                  <div>
-                    <strong>{venue.name}</strong>
-                    <span className="badge badge-side">{venueStatusLabel(venue.status)}</span>
-                    {venue.city && <span className="cell-note">{venue.city}</span>}
-                    {venue.phone && <span className="cell-note ltr-inline" dir="ltr">{venue.phone}</span>}
-                    {venue.priceNotes && <span className="cell-note">{venue.priceNotes}</span>}
-                    {venue.visitDate && <span className="cell-note">ביקור: {venue.visitDate}</span>}
-                    {venue.notes && <span className="cell-note">{venue.notes}</span>}
-                    <div className="row-actions">
-                      <button type="button" className="btn btn-primary btn-small" onClick={() => openTikTokVideos(venue.name, venue.city)}>
-                        סרטונים בטיקטוק
-                      </button>
-                      <a className="btn btn-ghost btn-small" href={googleTikTokVideoSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
-                        Google סרטוני טיקטוק
-                      </a>
-                      <a className="btn btn-ghost btn-small" href={mapsSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
-                        מפה
-                      </a>
-                      {venue.website && (
-                        <a className="btn btn-ghost btn-small" href={venue.website} target="_blank" rel="noopener noreferrer">
-                          אתר
-                        </a>
+                <li key={venue.id} className={`venue-card venue-${venue.status}`}>
+                  <div className={`venue-cover venue-cover-${venue.status}`} aria-hidden="true">
+                    <BuildingIcon />
+                    <span>{venue.name.trim().slice(0, 1)}</span>
+                  </div>
+                  <div className="venue-body">
+                    <div className="venue-title-row">
+                      <div>
+                        <h2 className={venue.status === 'rejected' ? 'is-struck' : undefined}>{venue.name}</h2>
+                        {venue.city && <p className="venue-city"><PinIcon />{venue.city}</p>}
+                      </div>
+                      {manage && (
+                        <OverflowMenu label={`פעולות עבור ${venue.name}`}>
+                          <button type="button" role="menuitem" onClick={() => setEditing(venue)}>עריכה</button>
+                          <button type="button" role="menuitem" className="menu-danger" onClick={() => setDeleting(venue)}>מחיקה</button>
+                        </OverflowMenu>
                       )}
                     </div>
+                    <div className="status-wrap">
+                      <button
+                        type="button"
+                        className={`status-chip status-${venue.status}`}
+                        disabled={!manage}
+                        aria-expanded={picking === venue.id}
+                        onClick={() => setPicking((current) => current === venue.id ? null : venue.id)}
+                      >
+                        {venue.status === 'chosen' ? '♥ ' : ''}
+                        {venueStatusLabel(venue.status)}
+                        {venue.status === 'scheduled' && venue.visitDate ? ` · ${formatVisit(venue.visitDate)}` : ''}
+                      </button>
+                      {picking === venue.id && (
+                        <div className="status-picker" role="listbox">
+                          {VENUE_STATUSES.map((item) => (
+                            <button key={item.id} type="button" role="option" aria-selected={item.id === venue.status} onClick={() => void changeStatus(venue, item.id)}>
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {(venue.priceNotes || venue.notes || (venue.visitDate && venue.status !== 'scheduled') || venue.phone) && (
+                      <p className="venue-notes">
+                        {[
+                          venue.priceNotes,
+                          venue.visitDate && venue.status !== 'scheduled' ? `ביקור ${formatVisit(venue.visitDate)}` : '',
+                          venue.phone,
+                          venue.notes,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    <div className="venue-actions">
+                      <button type="button" className="pill pill-primary" onClick={() => openTikTokVideos(venue.name, venue.city)}>
+                        <TikTokIcon />טיקטוק
+                      </button>
+                      <a className="pill" href={googleTikTokVideoSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
+                        <SearchIcon />Google
+                      </a>
+                      <a className="pill" href={mapsSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
+                        <PinIcon />מפה
+                      </a>
+                    </div>
+                    {venue.website && (
+                      <a className="text-button" href={venue.website} target="_blank" rel="noopener noreferrer">אתר האולם</a>
+                    )}
                     <VenueVideos urls={venue.tiktokUrls} />
                   </div>
-                  {manage && (
-                    <div className="row-actions">
-                      <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditing(venue)}>עריכה</button>
-                      <button type="button" className="btn btn-danger btn-small" onClick={() => void remove(venue)}>מחיקה</button>
-                    </div>
-                  )}
                 </li>
               ))}
             </ul>
@@ -143,6 +198,17 @@ export function VenuesPage() {
         </>
       )}
       {manage && <Fab label="הוספת אולם" onClick={() => setEditing('new')} />}
+      <Dialog open={deleting !== null} title="מחיקת אולם" onClose={() => setDeleting(null)}>
+        {deleting && (
+          <div className="stack-form">
+            <p>למחוק את {deleting.name}?</p>
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setDeleting(null)}>ביטול</button>
+              <button type="button" className="btn btn-danger" onClick={() => { void remove(deleting); setDeleting(null) }}>מחיקה</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
       <Dialog open={editing !== null} title={editing && editing !== 'new' ? 'עריכת אולם' : 'הוספת אולם'} onClose={() => setEditing(null)}>
         {editing && (
           <VenueForm
@@ -178,27 +244,58 @@ function openTikTokVideos(name: string, city: string) {
 function VenueVideos({ urls }: { urls: readonly string[] }) {
   if (urls.length === 0) return null
   return (
-    <div className="tiktok-list">
-      {urls.map((url) => {
-        const id = tiktokVideoId(url)
-        return id ? (
-          <iframe
-            key={url}
-            className="tiktok-frame"
-            src={`https://www.tiktok.com/embed/v2/${id}`}
-            title="סרטון טיקטוק"
-            loading="lazy"
-            allow="fullscreen"
-            referrerPolicy="strict-origin-when-cross-origin"
-          />
-        ) : (
-          <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-            {url}
-          </a>
-        )
-      })}
-    </div>
+    <details className="venue-videos">
+      <summary>סרטונים ({urls.length})</summary>
+      <div className="tiktok-list">
+        {urls.map((url) => {
+          const id = tiktokVideoId(url)
+          return id ? (
+            <iframe
+              key={url}
+              className="tiktok-frame"
+              src={`https://www.tiktok.com/embed/v2/${id}`}
+              title="סרטון טיקטוק"
+              loading="lazy"
+              allow="fullscreen"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer">{url}</a>
+          )
+        })}
+      </div>
+    </details>
   )
+}
+
+function FilterChip({ active, count, onClick, children }: { active: boolean; count: number; onClick: () => void; children: string }) {
+  return (
+    <button type="button" className={active ? 'chip chip-on' : 'chip'} aria-pressed={active} onClick={onClick}>
+      {children}<span>{count}</span>
+    </button>
+  )
+}
+
+function formatVisit(value: string): string {
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
+}
+
+function BuildingIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11h-5v-6H9v6z" fill="currentColor" /></svg>
+}
+
+function PinIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12zm0-9.2A2.8 2.8 0 1 1 12 7a2.8 2.8 0 0 1 0 5.8z" fill="currentColor" /></svg>
+}
+
+function SearchIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 0 1 5.1 10.5l4 4-1.4 1.4-4-4A6.5 6.5 0 1 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" fill="currentColor" /></svg>
+}
+
+function TikTokIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4c.4 2.4 1.8 4 4 4.4v2.2c-1.4 0-2.7-.4-4-1.2v6.2a5.6 5.6 0 1 1-5.6-5.6c.3 0 .6 0 .9.1v2.4a3.2 3.2 0 1 0 2.3 3.1V4z" fill="currentColor" /></svg>
 }
 
 function VenueForm({

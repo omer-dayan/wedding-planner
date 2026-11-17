@@ -16,6 +16,7 @@ import {
   type SongMomentId,
 } from '../../domain/songs.ts'
 import { Fab } from '../../ui/Fab.tsx'
+import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
 
@@ -31,6 +32,7 @@ export function MusicPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
+  const [deleting, setDeleting] = useState<Song | null>(null)
 
   useEffect(() => {
     return app.songs.subscribe(
@@ -112,9 +114,6 @@ export function MusicPage() {
           <h1>מוזיקה</h1>
           <p>שירים שתרצו שינגנו בחתונה.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
-          הוספת שיר
-        </button>
       </header>
       {loadError && <p className="form-error" role="alert">{loadError}</p>}
       {error && !editing && <p className="form-error" role="alert">{error}</p>}
@@ -128,16 +127,15 @@ export function MusicPage() {
               <span>חיפוש</span>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="שם שיר, אמן או הערה" />
             </label>
-            <label className="field">
-              <span>רגע</span>
-              <select value={moment} onChange={(event) => setMoment(event.target.value as MomentFilter)}>
-                <option value="all">הכל</option>
-                <option value="none">ללא רגע</option>
-                {SONG_MOMENTS.map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className="chip-row" role="tablist" aria-label="סינון לפי רגע">
+              <button type="button" className={moment === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={moment === 'all'} onClick={() => setMoment('all')}>הכל</button>
+              <button type="button" className={moment === 'none' ? 'chip chip-on' : 'chip'} aria-pressed={moment === 'none'} onClick={() => setMoment('none')}>ללא רגע</button>
+              {SONG_MOMENTS.map((item) => (
+                <button key={item.id} type="button" className={moment === item.id ? 'chip chip-on' : 'chip'} aria-pressed={moment === item.id} onClick={() => setMoment(item.id)}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
           {songs.length === 0 ? (
             <div className="empty">
@@ -157,7 +155,15 @@ export function MusicPage() {
                     <li key={song.id} className="song-card">
                       {song.artworkUrl && <img className="song-art" src={song.artworkUrl} alt="" width={60} height={60} />}
                       <div>
-                        <strong>{song.title}</strong>
+                        <div className="venue-title-row">
+                          <strong>{song.title}</strong>
+                          {canEditSong(app.wedding, app.user?.email ?? null, song) && (
+                            <OverflowMenu label={`פעולות עבור ${song.title}`}>
+                              <button type="button" role="menuitem" onClick={() => setEditing(song)}>עריכה</button>
+                              <button type="button" role="menuitem" className="menu-danger" onClick={() => setDeleting(song)}>מחיקה</button>
+                            </OverflowMenu>
+                          )}
+                        </div>
                         {song.artist && <span className="cell-note">{song.artist}</span>}
                         {song.notes && <span className="cell-note">{song.notes}</span>}
                         <p className="song-by">
@@ -165,7 +171,7 @@ export function MusicPage() {
                           {song.addedByRole ? ` · ${roleLabel(song.addedByRole)}` : ''}
                         </p>
                         <div className="row-actions">
-                          <a className="btn btn-spotify btn-small" href={spotifyHref(song.title, song.artist, song.url)} target="_blank" rel="noopener noreferrer">
+                          <a className="pill pill-spotify" href={spotifyHref(song.title, song.artist, song.url)} target="_blank" rel="noopener noreferrer">
                             Spotify
                           </a>
                           {song.url && !spotifyTrackId(song.url) && (
@@ -184,12 +190,6 @@ export function MusicPage() {
                           />
                         )}
                       </div>
-                      {canEditSong(app.wedding, app.user?.email ?? null, song) && (
-                        <div className="row-actions">
-                          <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditing(song)}>עריכה</button>
-                          <button type="button" className="btn btn-danger btn-small" onClick={() => void remove(song)}>מחיקה</button>
-                        </div>
-                      )}
                     </li>
                   ))}
                 </ul>
@@ -199,6 +199,17 @@ export function MusicPage() {
         </>
       )}
       <Fab label="הוספת שיר" onClick={() => setEditing('new')} />
+      <Dialog open={deleting !== null} title="מחיקת שיר" onClose={() => setDeleting(null)}>
+        {deleting && (
+          <div className="stack-form">
+            <p>למחוק את {deleting.title}?</p>
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setDeleting(null)}>ביטול</button>
+              <button type="button" className="btn btn-danger" onClick={() => { void remove(deleting); setDeleting(null) }}>מחיקה</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
       <Dialog
         open={editing !== null}
         title={editing && editing !== 'new' ? 'עריכת שיר' : 'הוספת שיר'}

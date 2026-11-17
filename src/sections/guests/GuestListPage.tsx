@@ -9,6 +9,7 @@ import { RSVP_STATUSES, SIDES } from '../../domain/types.ts'
 import type { Guest, GuestDraft } from '../../domain/types.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
+import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
 import { downloadTextFile } from '../../ui/download.ts'
 import { Fab } from '../../ui/Fab.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
@@ -94,9 +95,6 @@ export function GuestListPage() {
           <p>הוספה, אישורי הגעה, וסינון לפי צד, קבוצה וסטטוס.</p>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-primary" data-testid="add-guest" onClick={() => setModal({ type: 'form', guest: null })}>
-            הוספת מוזמן
-          </button>
           <button type="button" className="btn btn-ghost" disabled={!guests} onClick={() => downloadTextFile('guest-list.csv', guestsToAppCsv(guests ?? []))}>
             ייצוא CSV
           </button>
@@ -144,16 +142,15 @@ export function GuestListPage() {
                 ))}
               </select>
             </label>
-            <label className="field">
-              <span>צד</span>
-              <select value={query.side} onChange={(event) => setQuery({ ...query, side: event.target.value as GuestQuery['side'] })}>
-                <option value="all">הכל</option>
-                {SIDES.map((side) => (
-                  <option key={side} value={side}>{sideLabel(side)}</option>
-                ))}
-                <option value="unspecified">לא צוין</option>
-              </select>
-            </label>
+            <div className="chip-row" role="tablist" aria-label="סינון לפי צד">
+              <button type="button" className={query.side === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.side === 'all'} onClick={() => setQuery({ ...query, side: 'all' })}>הכל</button>
+              {SIDES.map((side) => (
+                <button key={side} type="button" className={query.side === side ? 'chip chip-on' : 'chip'} aria-pressed={query.side === side} onClick={() => setQuery({ ...query, side })}>
+                  {sideLabel(side)}
+                </button>
+              ))}
+              <button type="button" className={query.side === 'unspecified' ? 'chip chip-on' : 'chip'} aria-pressed={query.side === 'unspecified'} onClick={() => setQuery({ ...query, side: 'unspecified' })}>לא צוין</button>
+            </div>
             <label className="field">
               <span>קבוצה</span>
               <select value={query.group} onChange={(event) => setQuery({ ...query, group: event.target.value })}>
@@ -163,15 +160,14 @@ export function GuestListPage() {
                 ))}
               </select>
             </label>
-            <label className="field">
-              <span>סטטוס</span>
-              <select value={query.rsvp} onChange={(event) => setQuery({ ...query, rsvp: event.target.value as GuestQuery['rsvp'] })}>
-                <option value="all">הכל</option>
-                {RSVP_STATUSES.map((status) => (
-                  <option key={status} value={status}>{RSVP_LABELS[status]}</option>
-                ))}
-              </select>
-            </label>
+            <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
+              <button type="button" className={query.rsvp === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.rsvp === 'all'} onClick={() => setQuery({ ...query, rsvp: 'all' })}>הכל</button>
+              {RSVP_STATUSES.map((status) => (
+                <button key={status} type="button" className={query.rsvp === status ? 'chip chip-on' : 'chip'} aria-pressed={query.rsvp === status} onClick={() => setQuery({ ...query, rsvp: status })}>
+                  {RSVP_LABELS[status]}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               className="btn btn-ghost"
@@ -230,10 +226,10 @@ export function GuestListPage() {
                         <td><span className={`badge badge-${guest.rsvp}`}>{RSVP_LABELS[guest.rsvp]}</span></td>
                         <td className="row-actions">
                           {canEditGuest(app.wedding, viewerEmail, guest) && (
-                            <>
-                              <button type="button" className="btn btn-ghost btn-small" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
-                              <button type="button" className="btn btn-danger btn-small" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
-                            </>
+                            <OverflowMenu label={`פעולות עבור ${guest.fullName}`}>
+                              <button type="button" role="menuitem" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
+                              <button type="button" role="menuitem" className="menu-danger" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
+                            </OverflowMenu>
                           )}
                         </td>
                       </tr>
@@ -247,6 +243,12 @@ export function GuestListPage() {
                     <div className="guest-card-top">
                       <h2>{guest.fullName}</h2>
                       <span className={`badge badge-${guest.rsvp}`}>{RSVP_LABELS[guest.rsvp]}</span>
+                      {canEditGuest(app.wedding, viewerEmail, guest) && (
+                        <OverflowMenu label={`פעולות עבור ${guest.fullName}`}>
+                          <button type="button" role="menuitem" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
+                          <button type="button" role="menuitem" className="menu-danger" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
+                        </OverflowMenu>
+                      )}
                     </div>
                     <p>{guest.group || 'ללא קבוצה'}</p>
                     <p className="guest-meta">
@@ -257,14 +259,6 @@ export function GuestListPage() {
                       {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
                     </p>
                     {guest.notes && <p className="cell-note">{guest.notes}</p>}
-                    <div className="row-actions">
-                      {canEditGuest(app.wedding, viewerEmail, guest) && (
-                        <>
-                          <button type="button" className="btn btn-ghost btn-small" onClick={() => setModal({ type: 'form', guest })}>עריכה</button>
-                          <button type="button" className="btn btn-danger btn-small" onClick={() => setModal({ type: 'delete', guest })}>מחיקה</button>
-                        </>
-                      )}
-                    </div>
                   </article>
                 ))}
               </div>
@@ -315,7 +309,7 @@ export function GuestListPage() {
         )}
       </Dialog>
 
-      <Fab label="הוספת מוזמן" onClick={() => setModal({ type: 'form', guest: null })} />
+      <Fab label="הוספת מוזמן" testId="add-guest" onClick={() => setModal({ type: 'form', guest: null })} />
       <Dialog open={modal.type === 'contacts'} title="ייבוא מאנשי קשר" onClose={() => setModal({ type: 'none' })}>
         {modal.type === 'contacts' && (
           <ContactsImportDialog

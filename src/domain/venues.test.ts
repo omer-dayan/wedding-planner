@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canManageVenues, googleTikTokVideoSearchUrl, mapsSearchUrl, normalizeVenue, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery } from './venues.ts'
+import { canManageVenues, compareVenues, googleTikTokVideoSearchUrl, mapsSearchUrl, normalizeVenue, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery, type Venue } from './venues.ts'
 
 describe('venues', () => {
   it('requires a name and reads a TikTok video id', () => {
@@ -23,6 +23,31 @@ describe('venues', () => {
     expect(tiktokWebVideoSearchUrl(query)).toBe(`https://www.tiktok.com/search/video?q=${encodeURIComponent(query)}`)
     expect(googleTikTokVideoSearchUrl('גן ורדים', 'תל אביב')).toContain('site%3Atiktok.com')
     expect(mapsSearchUrl('גן ורדים', 'תל אביב')).toContain('query=')
+  })
+
+  it('sorts the chosen venue first, then by status and visit date', () => {
+    const venue = (name: string, status: Venue['status'], visitDate = ''): Venue => ({
+      id: name,
+      name,
+      city: '',
+      phone: '',
+      website: '',
+      priceNotes: '',
+      status,
+      visitDate,
+      notes: '',
+      tiktokUrls: [],
+      addedByEmail: '',
+      createdAt: '',
+      updatedAt: '',
+    })
+    const sorted = [
+      venue('מאוחר', 'scheduled', '2026-12-20'),
+      venue('נבחר', 'chosen'),
+      venue('מוקדם', 'scheduled', '2026-12-01'),
+      venue('פסול', 'rejected'),
+    ].sort(compareVenues)
+    expect(sorted.map((item) => item.name)).toEqual(['נבחר', 'מוקדם', 'מאוחר', 'פסול'])
   })
 
   it('lets only the couple and the owner manage venues', () => {

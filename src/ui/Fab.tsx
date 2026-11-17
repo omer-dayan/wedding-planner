@@ -1,6 +1,6 @@
-export function Fab({ label, onClick }: { label: string; onClick: () => void }) {
+export function Fab({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }) {
   return (
-    <button type="button" className="fab" aria-label={label} onClick={onClick}>
+    <button type="button" className="fab" aria-label={label} data-testid={testId} onClick={onClick}>
       <span aria-hidden="true">+</span>
     </button>
   )
