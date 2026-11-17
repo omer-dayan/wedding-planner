@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { SectionId } from './ids.ts'
+import { HomePage } from './home/HomePage.tsx'
 import { GuestListPage } from './guests/GuestListPage.tsx'
 import { MusicPage } from './music/MusicPage.tsx'
 import { VenuesPage } from './venues/VenuesPage.tsx'
@@ -12,6 +13,7 @@ export interface AppSection {
 }
 
 export const sections: readonly AppSection[] = [
+  { id: 'home', label: 'בית', Component: HomePage },
   { id: 'guests', label: 'מוזמנים', Component: GuestListPage },
   { id: 'music', label: 'מוזיקה', Component: MusicPage },
   { id: 'venues', label: 'אולמות', Component: VenuesPage },

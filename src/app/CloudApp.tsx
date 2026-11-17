@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import {
   completeRedirectSignIn,
@@ -9,8 +9,9 @@ import {
   type WeddingRepository,
 } from '../data/firebaseBackend.ts'
 import type { FirebaseWebConfig } from '../data/firebaseConfig.ts'
+import { memberAddedInput, roleChangedInput, type ActivityActor } from '../domain/activity.ts'
 import { addMemberEmail, chooseWedding, removeMemberEmail, type Wedding } from '../domain/members.ts'
-import { cleanMemberRoles } from '../domain/roles.ts'
+import { assignedRole, cleanMemberRoles, isCoupleOrOwner } from '../domain/roles.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
 import { SignInScreen } from '../auth/SignInScreen.tsx'
 import { AppShell } from '../layout/AppShell.tsx'
@@ -61,7 +62,7 @@ export function CloudApp({ config }: { config: FirebaseWebConfig }) {
       services.auth,
       (next) => {
         if (!active) return
-        setUser(next?.email ? { email: next.email, displayName: next.displayName || next.email } : null)
+        setUser(next?.email ? { email: next.email, displayName: next.displayName || next.email, photoUrl: next.photoURL || '' } : null)
         if (next && !next.email) setErrorCode('missing-email')
         setReady(true)
       },
@@ -180,17 +181,24 @@ function WeddingSession({
   weddingsRepo: WeddingRepository
   onSelectWedding: (id: string) => void
 }) {
-  const guests = useMemo(() => services.createGuestRepository(wedding.id), [services, wedding.id])
-  const songs = useMemo(() => services.createSongRepository(wedding.id), [services, wedding.id])
-  const venues = useMemo(() => services.createVenueRepository(wedding.id), [services, wedding.id])
+  const actorRef = useRef<ActivityActor>({ email: user.email, name: user.displayName, role: assignedRole(wedding, user.email), photoUrl: user.photoUrl })
+  actorRef.current = { email: user.email, name: user.displayName, role: assignedRole(wedding, user.email), photoUrl: user.photoUrl }
+  const activity = useMemo(() => services.createActivityRepository(wedding.id, () => actorRef.current), [services, wedding.id])
+  const guests = useMemo(() => services.createGuestRepository(wedding.id, activity), [services, wedding.id, activity])
+  const songs = useMemo(() => services.createSongRepository(wedding.id, activity), [services, wedding.id, activity])
+  const venues = useMemo(() => services.createVenueRepository(wedding.id, activity), [services, wedding.id, activity])
+  const canEditDate = isCoupleOrOwner(wedding, user.email)
   const value: AppServices = {
     mode: 'cloud',
     guests,
     songs,
     venues,
+    activity,
     user,
     wedding,
     weddings,
+    weddingDate: wedding.weddingDate,
+    onSetWeddingDate: canEditDate ? (date) => weddingsRepo.updateDate(wedding.id, date) : null,
     onSignOut: () => signOutUser(services.auth),
     onSelectWedding,
     onRenameWedding: (name) => weddingsRepo.updateName(wedding.id, name),
@@ -200,10 +208,16 @@ function WeddingSession({
         wedding.id,
         addMemberEmail(wedding.memberEmails, wedding.ownerEmail, memberEmail),
         memberRoles,
+        { logger: activity, inputs: [memberAddedInput(memberEmail)] },
       )
     },
     onSetMemberRole: async (memberEmail, role) => {
-      await weddingsRepo.updateMembers(wedding.id, wedding.memberEmails, withRole(wedding, memberEmail, role))
+      await weddingsRepo.updateMembers(
+        wedding.id,
+        wedding.memberEmails,
+        withRole(wedding, memberEmail, role),
+        { logger: activity, inputs: [roleChangedInput(memberEmail, assignedRole(wedding, memberEmail), role)] },
+      )
     },
     onRemoveMember: async (memberEmail) => {
       const memberRoles = { ...cleanMemberRoles(wedding.memberRoles) }

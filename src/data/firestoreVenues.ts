@@ -1,9 +1,11 @@
-import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc, updateDoc, type Firestore } from 'firebase/firestore'
+import { collection, doc, getDoc, onSnapshot, writeBatch, type Firestore } from 'firebase/firestore'
+import { venueActivity } from '../domain/activity.ts'
 import { DomainError } from '../domain/errors.ts'
 import { normalizeVenue, parseStoredVenue, type Venue } from '../domain/venues.ts'
+import { recordActivity, type ActivityLogger } from './activityLog.ts'
 import type { VenueRepository } from './venueRepository.ts'
 
-export function createFirestoreVenueRepository(db: Firestore, weddingId: string): VenueRepository {
+export function createFirestoreVenueRepository(db: Firestore, weddingId: string, logger?: ActivityLogger): VenueRepository {
   const venues = collection(db, 'weddings', weddingId, 'venues')
 
   return {
@@ -31,7 +33,10 @@ export function createFirestoreVenueRepository(db: Firestore, weddingId: string)
         createdAt: timestamp,
         updatedAt: timestamp,
       }
-      await setDoc(doc(venues, venue.id), venueToDoc(venue))
+      const batch = writeBatch(db)
+      batch.set(doc(venues, venue.id), venueToDoc(venue))
+      recordActivity(logger, venueActivity(null, venue), batch)
+      await batch.commit()
       return venue
     },
     async update(id, draft) {
@@ -42,14 +47,19 @@ export function createFirestoreVenueRepository(db: Firestore, weddingId: string)
       const stored = parseStoredVenue({ ...current.data(), id })
       if (!stored) throw new DomainError('not-found')
       const venue: Venue = { ...stored, ...normalized, updatedAt: new Date().toISOString() }
-      await updateDoc(ref, venueToDoc(venue))
+      const batch = writeBatch(db)
+      batch.update(ref, venueToDoc(venue))
+      recordActivity(logger, venueActivity(stored, venue), batch)
+      await batch.commit()
       return venue
     },
     async remove(id) {
       const ref = doc(venues, id)
       const current = await getDoc(ref)
       if (!current.exists()) throw new DomainError('not-found')
-      await deleteDoc(ref)
+      const batch = writeBatch(db)
+      batch.delete(ref)
+      await batch.commit()
     },
   }
 }

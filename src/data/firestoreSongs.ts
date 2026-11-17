@@ -1,20 +1,20 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
-  setDoc,
-  updateDoc,
+  writeBatch,
   type Firestore,
 } from 'firebase/firestore'
+import { songAddedInput, songDeletedInput } from '../domain/activity.ts'
 import { DomainError } from '../domain/errors.ts'
 import { normalizeSong, parseStoredSong, type Song } from '../domain/songs.ts'
+import { recordActivity, type ActivityLogger } from './activityLog.ts'
 import type { SongRepository } from './songRepository.ts'
 
 export type { SongRepository }
 
-export function createFirestoreSongRepository(db: Firestore, weddingId: string): SongRepository {
+export function createFirestoreSongRepository(db: Firestore, weddingId: string, logger?: ActivityLogger): SongRepository {
   const songs = collection(db, 'weddings', weddingId, 'songs')
 
   return {
@@ -44,7 +44,10 @@ export function createFirestoreSongRepository(db: Firestore, weddingId: string):
         createdAt: timestamp,
         updatedAt: timestamp,
       }
-      await setDoc(doc(songs, song.id), songToDoc(song))
+      const batch = writeBatch(db)
+      batch.set(doc(songs, song.id), songToDoc(song))
+      recordActivity(logger, [songAddedInput(song)], batch)
+      await batch.commit()
       return song
     },
     async update(id, draft) {
@@ -55,14 +58,20 @@ export function createFirestoreSongRepository(db: Firestore, weddingId: string):
       const stored = parseStoredSong({ ...current.data(), id })
       if (!stored) throw new DomainError('not-found')
       const song: Song = { ...stored, ...normalized, updatedAt: new Date().toISOString() }
-      await updateDoc(ref, songToDoc(song))
+      const batch = writeBatch(db)
+      batch.update(ref, songToDoc(song))
+      await batch.commit()
       return song
     },
     async remove(id) {
       const ref = doc(songs, id)
       const current = await getDoc(ref)
       if (!current.exists()) throw new DomainError('not-found')
-      await deleteDoc(ref)
+      const stored = parseStoredSong({ ...current.data(), id })
+      const batch = writeBatch(db)
+      batch.delete(ref)
+      if (stored) recordActivity(logger, [songDeletedInput(stored)], batch)
+      await batch.commit()
     },
   }
 }

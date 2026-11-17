@@ -33,6 +33,7 @@ const ERROR_TEXT: Record<string, string> = {
   'already-member': 'האימייל הזה כבר ברשימה.',
   'cannot-remove-owner': 'אי אפשר להסיר את בעלי החתונה.',
   'too-many-members': 'אפשר לשתף עד 20 אנשים.',
+  'invalid-date': 'תאריך החתונה אינו תקין.',
   'invalid-name': 'שם החתונה צריך להכיל לפחות תו אחד.',
   'name-too-long': 'שם החתונה ארוך מדי.',
   'title-required': 'יש להזין שם שיר.',

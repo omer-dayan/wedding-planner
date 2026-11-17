@@ -11,7 +11,6 @@ import {
 } from 'firebase/auth'
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -32,8 +31,13 @@ import type { SongRepository } from './songRepository.ts'
 import { createFirestoreSongRepository } from './firestoreSongs.ts'
 import { createFirestoreVenueRepository } from './firestoreVenues.ts'
 import type { VenueRepository } from './venueRepository.ts'
+import { createFirestoreActivityRepository } from './firestoreActivity.ts'
+import type { ActivityLogger, ActivityRepository } from './activityLog.ts'
+import { recordActivity } from './activityLog.ts'
+import type { ActivityActor, ActivityInput } from '../domain/activity.ts'
+import { guestActivity, importActivity } from '../domain/activity.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
-import { emailVariants, normalizeWeddingName, type Wedding } from '../domain/members.ts'
+import { emailVariants, normalizeWeddingDate, normalizeWeddingName, type Wedding } from '../domain/members.ts'
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
 import { normalizeDraft, parseStoredGuest } from '../domain/validation.ts'
 import type { Guest } from '../domain/types.ts'
@@ -44,15 +48,22 @@ export interface WeddingRepository {
   subscribe(listener: (weddings: Wedding[]) => void, onError?: (error: unknown) => void): () => void
   create(ownerEmail: string, name?: string): Promise<Wedding>
   updateName(id: string, name: string): Promise<void>
-  updateMembers(id: string, memberEmails: readonly string[], memberRoles: Record<string, WeddingRoleId>): Promise<void>
+  updateDate(id: string, weddingDate: string): Promise<void>
+  updateMembers(
+    id: string,
+    memberEmails: readonly string[],
+    memberRoles: Record<string, WeddingRoleId>,
+    activity?: { logger: ActivityLogger; inputs: readonly ActivityInput[] },
+  ): Promise<void>
 }
 
 export interface FirebaseServices {
   auth: Auth
   db: Firestore
-  createGuestRepository: (weddingId: string) => GuestRepository
-  createSongRepository: (weddingId: string) => SongRepository
-  createVenueRepository: (weddingId: string) => VenueRepository
+  createGuestRepository: (weddingId: string, logger?: ActivityLogger) => GuestRepository
+  createSongRepository: (weddingId: string, logger?: ActivityLogger) => SongRepository
+  createVenueRepository: (weddingId: string, logger?: ActivityLogger) => VenueRepository
+  createActivityRepository: (weddingId: string, actor: () => ActivityActor) => ActivityRepository
   createWeddingRepository: (email: string) => WeddingRepository
 }
 
@@ -73,9 +84,10 @@ export function createFirebaseServices(config: FirebaseWebConfig): FirebaseServi
   services = {
     auth,
     db,
-    createGuestRepository: (weddingId) => createFirestoreGuestRepository(db, weddingId),
-    createSongRepository: (weddingId) => createFirestoreSongRepository(db, weddingId),
-    createVenueRepository: (weddingId) => createFirestoreVenueRepository(db, weddingId),
+    createGuestRepository: (weddingId, logger) => createFirestoreGuestRepository(db, weddingId, logger),
+    createSongRepository: (weddingId, logger) => createFirestoreSongRepository(db, weddingId, logger),
+    createVenueRepository: (weddingId, logger) => createFirestoreVenueRepository(db, weddingId, logger),
+    createActivityRepository: (weddingId, actor) => createFirestoreActivityRepository(db, weddingId, actor),
     createWeddingRepository: (email) => createFirestoreWeddingRepository(db, email),
   }
   return services
@@ -142,6 +154,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         ownerEmail,
         memberEmails: emailVariants(ownerEmail),
         memberRoles: { [ownerEmail.trim().toLowerCase()]: 'groom' },
+        weddingDate: '',
         createdAt: timestamp,
         updatedAt: timestamp,
       }
@@ -150,6 +163,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         ownerEmail: wedding.ownerEmail,
         memberEmails: wedding.memberEmails,
         memberRoles: wedding.memberRoles,
+        weddingDate: wedding.weddingDate,
         createdAt: wedding.createdAt,
         updatedAt: wedding.updatedAt,
       })
@@ -161,17 +175,26 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         updatedAt: new Date().toISOString(),
       })
     },
-    async updateMembers(id, memberEmails, memberRoles) {
+    async updateDate(id, weddingDate) {
       await updateDoc(doc(weddings, id), {
+        weddingDate: normalizeWeddingDate(weddingDate),
+        updatedAt: new Date().toISOString(),
+      })
+    },
+    async updateMembers(id, memberEmails, memberRoles, activity) {
+      const batch = writeBatch(db)
+      batch.update(doc(weddings, id), {
         memberEmails: [...memberEmails],
         memberRoles,
         updatedAt: new Date().toISOString(),
       })
+      if (activity) recordActivity(activity.logger, activity.inputs, batch)
+      await batch.commit()
     },
   }
 }
 
-function createFirestoreGuestRepository(db: Firestore, weddingId: string): GuestRepository {
+function createFirestoreGuestRepository(db: Firestore, weddingId: string, logger?: ActivityLogger): GuestRepository {
   const guests = collection(db, 'weddings', weddingId, 'guests')
 
   function mapSnapshot(docs: Array<{ id: string; data: () => Record<string, unknown> }>): Guest[] {
@@ -251,7 +274,10 @@ function createFirestoreGuestRepository(db: Firestore, weddingId: string): Guest
         createdAt: timestamp,
         updatedAt: timestamp,
       }
-      await setDoc(doc(guests, guest.id), guestToDoc(guest))
+      const batch = writeBatch(db)
+      batch.set(doc(guests, guest.id), guestToDoc(guest))
+      recordActivity(logger, guestActivity(null, guest), batch)
+      await batch.commit()
       return guest
     },
     async update(id, draft) {
@@ -259,16 +285,38 @@ function createFirestoreGuestRepository(db: Firestore, weddingId: string): Guest
       const ref = doc(guests, id)
       const current = await getDoc(ref)
       if (!current.exists()) throw new DomainError('not-found')
+      const stored = parseStoredGuest({ ...current.data(), id })
       const createdAt = typeof current.data().createdAt === 'string' ? current.data().createdAt : new Date().toISOString()
       const guest: Guest = { id, ...normalized, createdAt, updatedAt: new Date().toISOString() }
-      await updateDoc(ref, guestToDoc(guest))
+      const batch = writeBatch(db)
+      batch.update(ref, guestToDoc(guest))
+      recordActivity(logger, guestActivity(stored, guest), batch)
+      await batch.commit()
       return guest
     },
     async remove(id) {
       const ref = doc(guests, id)
       const current = await getDoc(ref)
       if (!current.exists()) throw new DomainError('not-found')
-      await deleteDoc(ref)
+      const stored = parseStoredGuest({ ...current.data(), id })
+      const batch = writeBatch(db)
+      batch.delete(ref)
+      recordActivity(logger, guestActivity(stored, null), batch)
+      await batch.commit()
+    },
+    async importContacts(drafts) {
+      const created: Guest[] = []
+      const timestamp = new Date().toISOString()
+      for (const draft of drafts) {
+        const normalized = normalizeDraft(draft)
+        created.push({ id: crypto.randomUUID(), ...normalized, createdAt: timestamp, updatedAt: timestamp })
+      }
+      if (created.length === 0) return []
+      const ops: Array<(batch: WriteBatch) => void> = created.map((guest) => (batch) => batch.set(doc(guests, guest.id), guestToDoc(guest)))
+      const activity = importActivity(created)
+      ops.push((batch) => recordActivity(logger, [activity], batch))
+      await commitOps(db, ops)
+      return created
     },
     async replaceAll(next) {
       const clean: Guest[] = []
@@ -330,6 +378,7 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     ownerEmail: data.ownerEmail,
     memberEmails,
     memberRoles,
+    weddingDate: typeof data.weddingDate === 'string' ? data.weddingDate : '',
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
   }

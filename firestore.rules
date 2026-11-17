@@ -63,7 +63,7 @@ service cloud.firestore {
     }
 
     function validWedding(data) {
-      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'weddingDate', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['name', 'ownerEmail', 'memberEmails', 'createdAt', 'updatedAt'])
         && data.name is string
         && data.name.size() > 0
@@ -76,7 +76,8 @@ service cloud.firestore {
         && data.memberEmails.size() <= 40
         && data.createdAt is string
         && data.updatedAt is string
-        && (!data.keys().hasAny(['memberRoles']) || (data.memberRoles is map && data.memberRoles.size() <= 40));
+        && (!data.keys().hasAny(['memberRoles']) || (data.memberRoles is map && data.memberRoles.size() <= 40))
+        && (!data.keys().hasAny(['weddingDate']) || (data.weddingDate is string && (data.weddingDate == '' || data.weddingDate.matches('^\\d{4}-\\d{2}-\\d{2}$'))));
     }
 
     function validGuest(data) {
@@ -184,6 +185,48 @@ service cloud.firestore {
         && data.updatedAt is string;
     }
 
+    function validActivity(data) {
+      return data.keys().hasOnly([
+          'type', 'entity', 'entityId', 'entityName', 'actorEmail', 'actorName', 'actorRole', 'actorPhotoUrl', 'createdAt', 'details'
+        ])
+        && data.type in [
+          'guest_added', 'guest_edited', 'guest_deleted', 'rsvp_changed', 'guests_imported',
+          'song_added', 'song_deleted', 'venue_added', 'venue_status', 'venue_video', 'member_added', 'role_changed'
+        ]
+        && data.entity in ['guest', 'song', 'venue', 'member', 'rsvp']
+        && data.entityId is string
+        && data.entityId.size() > 0
+        && data.entityId.size() < 200
+        && data.entityName is string
+        && data.entityName.size() < 300
+        && data.actorEmail is string
+        && data.actorEmail.size() > 0
+        && data.actorEmail.size() < 200
+        && data.actorName is string
+        && data.actorName.size() < 200
+        && (data.actorRole == null || knownRole(data.actorRole))
+        && data.actorPhotoUrl is string
+        && data.actorPhotoUrl.size() < 1000
+        && (data.actorPhotoUrl == '' || data.actorPhotoUrl.matches('https://.+'))
+        && data.createdAt == request.time
+        && data.details is map
+        && data.details.keys().hasOnly(['from', 'to', 'count', 'names', 'fields', 'artworkUrl'])
+        && data.details.from is string
+        && data.details.from.size() < 200
+        && data.details.to is string
+        && data.details.to.size() < 200
+        && data.details.count is int
+        && data.details.count >= 0
+        && data.details.count <= 500
+        && data.details.names is list
+        && data.details.names.size() <= 8
+        && data.details.fields is list
+        && data.details.fields.size() <= 12
+        && data.details.artworkUrl is string
+        && data.details.artworkUrl.size() < 500
+        && (data.details.artworkUrl == '' || data.details.artworkUrl.matches('https://.+'));
+    }
+
     match /weddings/{weddingId} {
       allow read: if signedIn() && myEmail() in resource.data.memberEmails;
 
@@ -193,11 +236,19 @@ service cloud.firestore {
         && myEmail() in request.resource.data.memberEmails;
 
       allow update: if signedIn()
-        && isOwner(weddingId)
         && validWedding(request.resource.data)
         && request.resource.data.ownerEmail == resource.data.ownerEmail
-        && myEmail() in request.resource.data.memberEmails
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          (
+            isOwner(weddingId)
+            && myEmail() in request.resource.data.memberEmails
+          )
+          || (
+            canModerate(weddingId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'updatedAt'])
+          )
+        );
 
       allow delete: if false;
 
@@ -239,6 +290,15 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.addedByEmail == resource.data.addedByEmail;
         allow delete: if isMember(weddingId) && canModerate(weddingId);
+      }
+
+      match /activity/{eventId} {
+        allow read: if canModerate(weddingId);
+        allow create: if isMember(weddingId)
+          && validActivity(request.resource.data)
+          && (request.resource.data.actorEmail == myEmail() || request.resource.data.actorEmail == myEmail().lower());
+        allow update: if false;
+        allow delete: if isOwner(weddingId);
       }
     }
   }

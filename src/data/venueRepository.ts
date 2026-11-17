@@ -1,5 +1,7 @@
+import { venueActivity } from '../domain/activity.ts'
 import { DomainError } from '../domain/errors.ts'
 import { normalizeVenue, parseStoredVenue, type Venue, type VenueDraft } from '../domain/venues.ts'
+import { recordActivity, type ActivityLogger } from './activityLog.ts'
 import type { KeyValueStorage } from './storage.ts'
 
 export const VENUE_STORAGE_KEY = 'wedding-planner.venues.v1'
@@ -11,7 +13,7 @@ export interface VenueRepository {
   remove(id: string): Promise<void>
 }
 
-export function createLocalVenueRepository(storage: KeyValueStorage, key = VENUE_STORAGE_KEY): VenueRepository {
+export function createLocalVenueRepository(storage: KeyValueStorage, key = VENUE_STORAGE_KEY, logger?: ActivityLogger): VenueRepository {
   const listeners = new Set<(venues: Venue[]) => void>()
   let venues = readVenues(storage, key)
 
@@ -50,6 +52,7 @@ export function createLocalVenueRepository(storage: KeyValueStorage, key = VENUE
         updatedAt: timestamp,
       }
       persist([...venues, venue])
+      recordActivity(logger, venueActivity(null, venue))
       return venue
     },
     async update(id, draft) {
@@ -58,6 +61,7 @@ export function createLocalVenueRepository(storage: KeyValueStorage, key = VENUE
       if (!current) throw new DomainError('not-found')
       const venue: Venue = { ...current, ...normalized, updatedAt: new Date().toISOString() }
       persist(venues.map((item) => (item.id === id ? venue : item)))
+      recordActivity(logger, venueActivity(current, venue))
       return venue
     },
     async remove(id) {

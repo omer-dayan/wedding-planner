@@ -15,6 +15,7 @@ import {
   type SongDraft,
   type SongMomentId,
 } from '../../domain/songs.ts'
+import { Fab } from '../../ui/Fab.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
 
@@ -197,6 +198,7 @@ export function MusicPage() {
           )}
         </>
       )}
+      <Fab label="הוספת שיר" onClick={() => setEditing('new')} />
       <Dialog
         open={editing !== null}
         title={editing && editing !== 'new' ? 'עריכת שיר' : 'הוספת שיר'}

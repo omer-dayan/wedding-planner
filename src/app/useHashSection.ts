@@ -3,6 +3,7 @@ import { isSectionId, type SectionId } from '../sections/ids.ts'
 
 function readSection(): SectionId {
   const id = window.location.hash.replace(/^#\/?/, '').split(/[/?#]/)[0] ?? ''
+  if (!id) return 'home'
   return isSectionId(id) ? id : 'guests'
 }
 
@@ -12,7 +13,6 @@ export function useHashSection(): SectionId {
   useEffect(() => {
     const onChange = () => setSection(readSection())
     window.addEventListener('hashchange', onChange)
-    if (!window.location.hash) history.replaceState(null, '', '#/guests')
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
 

@@ -1,7 +1,9 @@
+import { songAddedInput, songDeletedInput } from '../domain/activity.ts'
 import { DomainError } from '../domain/errors.ts'
 import type { Song, SongDraft } from '../domain/songs.ts'
 import { normalizeSong, parseStoredSong } from '../domain/songs.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
+import { recordActivity, type ActivityLogger } from './activityLog.ts'
 import type { KeyValueStorage } from './storage.ts'
 
 export const SONG_STORAGE_KEY = 'wedding-planner.songs.v1'
@@ -19,7 +21,7 @@ export interface SongRepository {
   remove(id: string): Promise<void>
 }
 
-export function createLocalSongRepository(storage: KeyValueStorage, key = SONG_STORAGE_KEY): SongRepository {
+export function createLocalSongRepository(storage: KeyValueStorage, key = SONG_STORAGE_KEY, logger?: ActivityLogger): SongRepository {
   const listeners = new Set<(songs: Song[]) => void>()
   let songs = readSongs(storage, key)
 
@@ -60,6 +62,7 @@ export function createLocalSongRepository(storage: KeyValueStorage, key = SONG_S
         updatedAt: timestamp,
       }
       persist([...songs, song])
+      recordActivity(logger, [songAddedInput(song)])
       return song
     },
     async update(id, draft) {
@@ -71,8 +74,10 @@ export function createLocalSongRepository(storage: KeyValueStorage, key = SONG_S
       return song
     },
     async remove(id) {
-      if (!songs.some((song) => song.id === id)) throw new DomainError('not-found')
+      const current = songs.find((song) => song.id === id)
+      if (!current) throw new DomainError('not-found')
       persist(songs.filter((song) => song.id !== id))
+      recordActivity(logger, [songDeletedInput(current)])
     },
   }
 }

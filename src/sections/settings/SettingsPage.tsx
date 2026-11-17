@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { displayMembers } from '../../domain/members.ts'
 import { assignedRole, roleLabel, WEDDING_ROLES } from '../../domain/roles.ts'
@@ -30,6 +30,7 @@ export function SettingsPage() {
             עם בן או בת הזוג, חברו פרויקט Firebase לפי ההוראות בקובץ README.
           </p>
         </div>
+        <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
         <BuildStamp />
       </section>
     )
@@ -188,8 +189,34 @@ export function SettingsPage() {
           </p>
         )}
       </div>
+      <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
       <BuildStamp />
     </section>
+  )
+}
+
+function WeddingDateField({ date, onSave }: { date: string; onSave: ((value: string) => Promise<void>) | null }) {
+  const [value, setValue] = useState(date)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => setValue(date), [date])
+  if (!onSave && !date) return null
+  return (
+    <form
+      className="panel stack-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!onSave) return
+        setError(null)
+        void onSave(value).catch((failure: unknown) => setError(messageFrom(failure)))
+      }}
+    >
+      <label className="field">
+        <span>תאריך החתונה</span>
+        <input type="date" value={value} onChange={(event) => setValue(event.target.value)} disabled={!onSave} />
+      </label>
+      {onSave && <button type="submit" className="btn btn-primary">שמירת תאריך</button>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+    </form>
   )
 }
 

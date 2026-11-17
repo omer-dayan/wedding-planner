@@ -17,6 +17,7 @@ import {
   type VenueDraft,
   type VenueStatusId,
 } from '../../domain/venues.ts'
+import { Fab } from '../../ui/Fab.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
 
@@ -141,6 +142,7 @@ export function VenuesPage() {
           )}
         </>
       )}
+      {manage && <Fab label="הוספת אולם" onClick={() => setEditing('new')} />}
       <Dialog open={editing !== null} title={editing && editing !== 'new' ? 'עריכת אולם' : 'הוספת אולם'} onClose={() => setEditing(null)}>
         {editing && (
           <VenueForm

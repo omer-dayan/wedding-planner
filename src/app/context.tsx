@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { AppContext } from './appContext.ts'
+import type { ActivityRepository } from '../data/activityLog.ts'
 import type { GuestRepository } from '../data/guestRepository.ts'
 import type { SongRepository } from '../data/songRepository.ts'
 import type { VenueRepository } from '../data/venueRepository.ts'
@@ -9,6 +10,7 @@ import type { WeddingRoleId } from '../domain/roles.ts'
 export interface SessionUser {
   email: string
   displayName: string
+  photoUrl: string
 }
 
 export interface AppServices {
@@ -16,9 +18,12 @@ export interface AppServices {
   guests: GuestRepository
   songs: SongRepository
   venues: VenueRepository
+  activity: ActivityRepository
   user: SessionUser | null
   wedding: Wedding | null
   weddings: readonly Wedding[]
+  weddingDate: string
+  onSetWeddingDate: ((date: string) => Promise<void>) | null
   onSignOut: (() => Promise<void>) | null
   onSelectWedding: ((id: string) => void) | null
   onRenameWedding: ((name: string) => Promise<void>) | null

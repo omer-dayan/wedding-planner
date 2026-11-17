@@ -10,6 +10,7 @@ import type { Guest, GuestDraft } from '../../domain/types.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
 import { downloadTextFile } from '../../ui/download.ts'
+import { Fab } from '../../ui/Fab.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
 import { ContactsImportDialog } from './ContactsImportDialog.tsx'
 import { GuestForm } from './GuestForm.tsx'
@@ -80,7 +81,7 @@ export function GuestListPage() {
   }
 
   async function importContacts(drafts: GuestDraft[]) {
-    for (const draft of drafts) await app.guests.create(draft)
+    await app.guests.importContacts(drafts)
     setBanner(`נוספו ${drafts.length} אנשי קשר.`)
     setModal({ type: 'none' })
   }
@@ -314,6 +315,7 @@ export function GuestListPage() {
         )}
       </Dialog>
 
+      <Fab label="הוספת מוזמן" onClick={() => setModal({ type: 'form', guest: null })} />
       <Dialog open={modal.type === 'contacts'} title="ייבוא מאנשי קשר" onClose={() => setModal({ type: 'none' })}>
         {modal.type === 'contacts' && (
           <ContactsImportDialog

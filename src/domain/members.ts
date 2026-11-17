@@ -7,6 +7,7 @@ export interface Wedding {
   ownerEmail: string
   memberEmails: string[]
   memberRoles: Record<string, WeddingRoleId>
+  weddingDate: string
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +27,13 @@ export function emailVariants(email: string): string[] {
   const trimmed = email.trim()
   const lower = trimmed.toLowerCase()
   return trimmed === lower ? [trimmed] : [trimmed, lower]
+}
+
+export function normalizeWeddingDate(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) throw new DomainError('invalid-date')
+  return trimmed
 }
 
 export function normalizeWeddingName(name: string): string {
