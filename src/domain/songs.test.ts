@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canEditSong, normalizeSong, normalizeSongUrl, spotifyHref, spotifyTrackId } from './songs.ts'
+import { canEditSong, normalizeSong, normalizeSongUrl, sameSongTitleArtist, spotifyHref, spotifyTrackId } from './songs.ts'
 
 describe('songs', () => {
   it('requires a title and accepts only http(s) links', () => {
@@ -21,6 +21,11 @@ describe('songs', () => {
       previewUrl: 'https://audio.example/preview.m4a',
       moment: 'dancing',
     })
+  })
+
+  it('treats the same title and artist as one song', () => {
+    expect(sameSongTitleArtist({ title: '  מלכת   הדור ', artist: 'Omer Adam' }, { title: 'מלכת הדור', artist: 'omer adam' })).toBe(true)
+    expect(sameSongTitleArtist({ title: 'מלכת הדור', artist: 'Omer Adam' }, { title: 'מלכת הדור', artist: 'אחר' })).toBe(false)
   })
 
   it('uses a pasted Spotify track link and otherwise a search link', () => {

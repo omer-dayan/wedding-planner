@@ -131,6 +131,17 @@ export function spotifyTrackId(value: string): string | null {
   }
 }
 
+export function sameSongTitleArtist(
+  left: { title: string; artist: string },
+  right: { title: string; artist: string },
+): boolean {
+  return songIdentity(left.title) === songIdentity(right.title) && songIdentity(left.artist) === songIdentity(right.artist)
+}
+
+function songIdentity(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('he')
+}
+
 export function spotifyHref(title: string, artist: string, pastedUrl: string): string {
   const id = spotifyTrackId(pastedUrl)
   if (id) return `https://open.spotify.com/track/${id}`

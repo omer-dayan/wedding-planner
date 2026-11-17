@@ -1,3 +1,9 @@
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
 :root {
   color-scheme: light;
   --bg: #eef6f0;
@@ -74,7 +80,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   flex-wrap: wrap;
   align-items: center;
   gap: 12px 16px;
-  padding: 16px 16px 12px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 12px;
   background: rgba(247, 251, 248, 0.94);
   border-bottom: 1px solid var(--line);
   position: sticky;
@@ -305,6 +311,7 @@ input, select, textarea {
   border-radius: 14px;
   min-height: 44px;
   padding: 8px 12px;
+  font-size: 16px;
 }
 
 textarea { min-height: 88px; resize: vertical; }
@@ -403,6 +410,7 @@ textarea { min-height: 88px; resize: vertical; }
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--line);
+  padding-top: calc(16px + env(safe-area-inset-top));
 }
 
 .dialog-body { overflow: auto; }
@@ -462,20 +470,67 @@ textarea { min-height: 88px; resize: vertical; }
 .song-by { color: var(--muted); margin-top: 6px; font-size: 0.92rem; }
 .btn-spotify { background: #1db954; color: #06210f; border-color: transparent; }
 .spotify-embed { width: min(100%, 380px); height: 80px; border: 0; border-radius: 12px; margin-top: 8px; }
+.toast {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: center;
+}
 .itunes-list { list-style: none; padding: 0; margin: 0; }
-.itunes-list li { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); }
+.itunes-item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.itunes-result { display: flex; gap: 8px; align-items: center; }
+.preview-button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  flex: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.preview-button:disabled { opacity: 0.4; cursor: default; }
 .itunes-row {
   flex: 1;
+  min-width: 0;
+  min-height: 44px;
   display: flex;
   gap: 10px;
   align-items: center;
   text-align: start;
   background: transparent;
   border: 0;
-  padding: 8px 0;
+  padding: 0;
   cursor: pointer;
 }
-.itunes-row img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+.itunes-row:disabled { cursor: default; }
+.itunes-row img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; flex: none; }
+.itunes-copy { min-width: 0; }
+.itunes-copy strong,
+.itunes-copy .cell-note {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.add-song { flex: none; min-height: 44px; min-width: 44px; padding-inline: 14px; white-space: nowrap; }
+.already-badge {
+  flex: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.itunes-moment { margin-top: 8px; }
 
 .visually-hidden {
   position: absolute;

@@ -7,6 +7,7 @@ import {
   canEditSong,
   momentLabel,
   normalizeSong,
+  sameSongTitleArtist,
   SONG_MOMENTS,
   spotifyHref,
   spotifyTrackId,
@@ -28,6 +29,7 @@ export function MusicPage() {
   const [editing, setEditing] = useState<Song | null | 'new'>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
 
   useEffect(() => {
     return app.songs.subscribe(
@@ -38,6 +40,12 @@ export function MusicPage() {
       (failure) => setLoadError(messageFrom(failure)),
     )
   }, [app.songs])
+
+  useEffect(() => {
+    if (!toast) return
+    const handle = window.setTimeout(() => setToast(null), 2500)
+    return () => window.clearTimeout(handle)
+  }, [toast])
 
   const visible = useMemo(() => filterSongs(songs ?? [], search, moment), [songs, search, moment])
   const groups = useMemo(() => groupSongs(visible, moment), [visible, moment])
@@ -63,6 +71,29 @@ export function MusicPage() {
     }
   }
 
+  async function addFromSearch(draft: SongDraft) {
+    setError(null)
+    await app.songs.create(draft, {
+      email: app.user?.email ?? '',
+      name: app.user?.displayName || 'מכשיר זה',
+      role: app.user ? assignedRole(app.wedding, app.user.email) : null,
+    })
+    setToast({ id: Date.now(), text: 'השיר נוסף לרשימה' })
+  }
+
+  async function updateMoment(song: Song, next: SongMomentId | null) {
+    setError(null)
+    await app.songs.update(song.id, {
+      title: song.title,
+      artist: song.artist,
+      url: song.url,
+      artworkUrl: song.artworkUrl,
+      previewUrl: song.previewUrl,
+      moment: next,
+      notes: song.notes,
+    })
+  }
+
   async function remove(song: Song) {
     setError(null)
     try {
@@ -86,6 +117,7 @@ export function MusicPage() {
       </header>
       {loadError && <p className="form-error" role="alert">{loadError}</p>}
       {error && !editing && <p className="form-error" role="alert">{error}</p>}
+      {toast && !editing && <p className="toast" role="status">{toast.text}</p>}
       {songs === null ? (
         <p className="hint">טוען את השירים…</p>
       ) : (
@@ -168,15 +200,23 @@ export function MusicPage() {
       <Dialog
         open={editing !== null}
         title={editing && editing !== 'new' ? 'עריכת שיר' : 'הוספת שיר'}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null)
+          setToast(null)
+        }}
       >
         {editing && (
           <SongForm
             key={editing === 'new' ? 'new' : editing.id}
             song={editing === 'new' ? null : editing}
+            songs={songs ?? []}
             saving={saving}
+            toast={toast?.text ?? null}
+            canEdit={(song) => canEditSong(app.wedding, app.user?.email ?? null, song)}
             onCancel={() => setEditing(null)}
             onSubmit={save}
+            onQuickAdd={addFromSearch}
+            onSetMoment={updateMoment}
           />
         )}
       </Dialog>
@@ -186,19 +226,29 @@ export function MusicPage() {
 
 function SongForm({
   song,
+  songs,
   saving,
+  toast,
+  canEdit,
   onCancel,
   onSubmit,
+  onQuickAdd,
+  onSetMoment,
 }: {
   song: Song | null
+  songs: readonly Song[]
   saving: boolean
+  toast: string | null
+  canEdit: (song: Song) => boolean
   onCancel: () => void
   onSubmit: (draft: SongDraft) => Promise<void>
+  onQuickAdd: (draft: SongDraft) => Promise<void>
+  onSetMoment: (song: Song, moment: SongMomentId | null) => Promise<void>
 }) {
   const [title, setTitle] = useState(song?.title ?? '')
   const [artist, setArtist] = useState(song?.artist ?? '')
-  const [artworkUrl, setArtworkUrl] = useState(song?.artworkUrl ?? '')
-  const [previewUrl, setPreviewUrl] = useState(song?.previewUrl ?? '')
+  const [artworkUrl] = useState(song?.artworkUrl ?? '')
+  const [previewUrl] = useState(song?.previewUrl ?? '')
   const [url, setUrl] = useState(song?.url ?? '')
   const [moment, setMoment] = useState<SongMomentId | ''>(song?.moment ?? '')
   const [notes, setNotes] = useState(song?.notes ?? '')
@@ -207,6 +257,7 @@ function SongForm({
   const [results, setResults] = useState<ItunesSong[]>([])
   const [searching, setSearching] = useState(false)
   const [playing, setPlaying] = useState<number | null>(null)
+  const [addingId, setAddingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
 
@@ -226,14 +277,11 @@ function SongForm({
     return () => window.clearTimeout(handle)
   }, [query])
 
-  useEffect(() => () => audio.current?.pause(), [])
+  useEffect(() => () => {
+    audio.current?.pause()
+  }, [])
 
-  function choose(result: ItunesSong) {
-    setTitle(result.trackName)
-    setArtist(result.artistName)
-    setArtworkUrl(result.artworkUrl100)
-    setPreviewUrl(result.previewUrl)
-    setManual(true)
+  function stopPreview() {
     audio.current?.pause()
     setPlaying(null)
   }
@@ -253,8 +301,33 @@ function SongForm({
     player.onended = () => setPlaying(null)
   }
 
+  async function addResult(result: ItunesSong) {
+    const listed = songs.find((item) => sameSongTitleArtist(item, { title: result.trackName, artist: result.artistName }))
+    if (listed || addingId !== null) return
+    stopPreview()
+    setAddingId(result.trackId)
+    setError(null)
+    try {
+      await onQuickAdd({
+        title: result.trackName,
+        artist: result.artistName,
+        url: '',
+        artworkUrl: result.artworkUrl100,
+        previewUrl: result.previewUrl,
+        moment: null,
+        notes: '',
+      })
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setAddingId(null)
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (!manual) return
+    stopPreview()
     try {
       const draft = normalizeSong({
         title,
@@ -273,32 +346,77 @@ function SongForm({
 
   return (
     <form className="stack-form" onSubmit={(event) => void handleSubmit(event)}>
+      {toast && <p className="toast" role="status">{toast}</p>}
       {!song && (
         <label className="field">
           <span>חיפוש שיר</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="שם שיר או אמן" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="שם שיר או אמן" enterKeyHint="search" />
         </label>
       )}
       {searching && <p className="hint">מחפשים…</p>}
       {results.length > 0 && (
         <ul className="itunes-list">
-          {results.map((result) => (
-            <li key={result.trackId}>
-              <button type="button" className="itunes-row" onClick={() => choose(result)}>
-                {result.artworkUrl100 && <img src={result.artworkUrl100} alt="" width={60} height={60} />}
-                <span>
-                  <strong>{result.trackName}</strong>
-                  <span className="cell-note">{result.artistName}</span>
-                  {result.collectionName && <span className="cell-note">{result.collectionName}</span>}
-                </span>
-              </button>
-              {result.previewUrl && (
-                <button type="button" className="btn btn-ghost btn-small" onClick={() => togglePreview(result)}>
-                  {playing === result.trackId ? 'השהיה' : 'השמעה'}
-                </button>
-              )}
-            </li>
-          ))}
+          {results.map((result) => {
+            const listed = songs.find((item) => sameSongTitleArtist(item, { title: result.trackName, artist: result.artistName }))
+            return (
+              <li key={result.trackId} className="itunes-item">
+                <div className="itunes-result">
+                  <button
+                    type="button"
+                    className="preview-button"
+                    aria-label={playing === result.trackId ? `השהיית ${result.trackName}` : `השמעת קטע מ-${result.trackName}`}
+                    disabled={!result.previewUrl}
+                    onClick={() => togglePreview(result)}
+                  >
+                    {playing === result.trackId ? '❚❚' : '▶'}
+                  </button>
+                  <button
+                    type="button"
+                    className="itunes-row"
+                    disabled={Boolean(listed) || addingId !== null}
+                    onClick={() => void addResult(result)}
+                  >
+                    {result.artworkUrl100 && <img src={result.artworkUrl100} alt="" width={60} height={60} />}
+                    <span className="itunes-copy">
+                      <strong>{result.trackName}</strong>
+                      <span className="cell-note">{result.artistName}</span>
+                      {result.collectionName && <span className="cell-note">{result.collectionName}</span>}
+                    </span>
+                  </button>
+                  {listed ? (
+                    <span className="already-badge">כבר ברשימה</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-primary add-song"
+                      disabled={addingId !== null}
+                      onClick={() => void addResult(result)}
+                    >
+                      {addingId === result.trackId ? 'מוסיף…' : '+ הוסף'}
+                    </button>
+                  )}
+                </div>
+                {listed && canEdit(listed) && (
+                  <label className="field itunes-moment">
+                    <span>רגע</span>
+                    <select
+                      aria-label={`רגע עבור ${listed.title}`}
+                      value={listed.moment ?? ''}
+                      onChange={(event) => {
+                        const next = (event.target.value || null) as SongMomentId | null
+                        void onSetMoment(listed, next).catch((failure: unknown) => setError(messageFrom(failure)))
+                      }}
+                    >
+                      <option value="">ללא רגע</option>
+                      {SONG_MOMENTS.map((item) => (
+                        <option key={item.id} value={item.id}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
       {!song && !manual && (
@@ -337,7 +455,7 @@ function SongForm({
       )}
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-actions">
-        <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={saving}>ביטול</button>
+        <button type="button" className="btn btn-ghost" onClick={() => { stopPreview(); onCancel() }} disabled={saving || addingId !== null}>ביטול</button>
         {manual && <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'שומר…' : 'שמירה'}</button>}
       </div>
     </form>
