@@ -1,24 +1,25 @@
-import type { Guest, RsvpStatus, Side, WeddingRoleId } from './types.ts'
+import type { Category, Guest, RsvpStatus, Side, SubSide } from './types.ts'
 
 export type SideFilter = Side | 'unspecified' | 'all'
 export type RsvpFilter = RsvpStatus | 'all'
-export type RoleFilter = WeddingRoleId | 'none' | 'all'
+export type SubSideFilter = SubSide | 'all'
+export type CategoryFilter = Category | 'all'
 
 export interface GuestQuery {
   search: string
   side: SideFilter
-  group: string | 'all'
+  subSide: SubSideFilter
+  category: CategoryFilter
   rsvp: RsvpFilter
-  role: RoleFilter
   sort: 'asc' | 'desc'
 }
 
 export const EMPTY_QUERY: GuestQuery = {
   search: '',
   side: 'all',
-  group: 'all',
+  subSide: 'all',
+  category: 'all',
   rsvp: 'all',
-  role: 'all',
   sort: 'asc',
 }
 
@@ -27,10 +28,9 @@ export function queryGuests(guests: readonly Guest[], query: GuestQuery): Guest[
   const digits = search.replace(/\D/g, '')
   const filtered = guests.filter((guest) => {
     if (query.side !== 'all' && (guest.side ?? 'unspecified') !== query.side) return false
-    if (query.group !== 'all' && guest.group !== query.group) return false
+    if (query.subSide !== 'all' && guest.subSide !== query.subSide) return false
+    if (query.category !== 'all' && guest.category !== query.category) return false
     if (query.rsvp !== 'all' && guest.rsvp !== query.rsvp) return false
-    if (query.role === 'none' && guest.role !== null) return false
-    if (query.role !== 'all' && query.role !== 'none' && guest.role !== query.role) return false
     if (!search) return true
     const haystack = `${guest.fullName} ${guest.notes} ${guest.group} ${guest.phone}`.toLocaleLowerCase('he')
     if (haystack.includes(search)) return true

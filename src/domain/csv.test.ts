@@ -37,6 +37,8 @@ describe('app csv', () => {
         rsvp: 'attending',
         notes: 'שורה, עם "ציטוט"',
         role: null,
+        subSide: 'none',
+        category: 'other',
       },
     ])
   })

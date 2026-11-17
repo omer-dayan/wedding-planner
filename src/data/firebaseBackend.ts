@@ -393,6 +393,8 @@ function guestToDoc(guest: Guest): Record<string, string | number | boolean | nu
     fullName: guest.fullName,
     phone: guest.phone,
     side: guest.side,
+    subSide: guest.subSide,
+    category: guest.category,
     role: guest.role,
     group: guest.group,
     partySize: guest.partySize,

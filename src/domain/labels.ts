@@ -1,4 +1,4 @@
-import type { RsvpStatus, Side } from './types.ts'
+import type { Category, RsvpStatus, Side, SubSide } from './types.ts'
 
 export const PRESET_GROUPS = ['משפחה', 'חברים', 'עבודה']
 
@@ -9,6 +9,20 @@ export const SIDE_LABELS: Record<Side, string> = {
 }
 
 export const UNSPECIFIED_SIDE_LABEL = 'לא צוין'
+
+export const SUB_SIDE_LABELS: Record<SubSide, string> = {
+  none: 'ריק',
+  parents: 'הורים',
+  brother: 'אח',
+  sister: 'אחות',
+}
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  family: 'משפחה',
+  friends: 'חברים',
+  work: 'עבודה',
+  other: 'אחר',
+}
 
 export const RSVP_LABELS: Record<RsvpStatus, string> = {
   pending: 'ממתין',

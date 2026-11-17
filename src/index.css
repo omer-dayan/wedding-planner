@@ -969,6 +969,27 @@ textarea { min-height: 88px; resize: vertical; }
   cursor: pointer;
 }
 .menu-danger { color: var(--no); }
+.segment { display: flex; flex-wrap: wrap; gap: 6px; }
+.segment button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.segment button.segment-on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.mini-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+.guest-chips, .locked-placement { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .song-card, .guest-card { position: relative; }
 a.btn, a.btn:visited, a.text-button, a.text-button:visited { text-decoration: none; }
 a.btn-primary, a.btn-primary:visited { color: var(--on-accent); }

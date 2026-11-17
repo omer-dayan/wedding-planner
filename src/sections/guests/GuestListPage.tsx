@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { guestsToAppCsv } from '../../domain/csv.ts'
-import { PRESET_GROUPS, RSVP_LABELS, sideLabel } from '../../domain/labels.ts'
-import { assignedRole, canEditGuest, isRestrictedMember, roleLabel, WEDDING_ROLES } from '../../domain/roles.ts'
-import { EMPTY_QUERY, groupOptions, queryGuests } from '../../domain/query.ts'
+import { CATEGORY_LABELS, RSVP_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
+import { assignedRole, canEditGuest, isCoupleOrOwner, placementForRole } from '../../domain/roles.ts'
+import { EMPTY_QUERY, queryGuests } from '../../domain/query.ts'
 import type { GuestQuery } from '../../domain/query.ts'
-import { RSVP_STATUSES, SIDES } from '../../domain/types.ts'
+import { CATEGORIES, RSVP_STATUSES, SIDES, SUB_SIDES } from '../../domain/types.ts'
 import type { Guest, GuestDraft } from '../../domain/types.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
@@ -45,12 +45,15 @@ export function GuestListPage() {
 
   const visible = useMemo(() => (guests ? queryGuests(guests, query) : []), [guests, query])
   const stats = useMemo(() => summarizeGuests(guests ?? []), [guests])
-  const groups = useMemo(() => groupOptions(guests ?? []), [guests])
-  const formGroups = useMemo(() => [...new Set([...PRESET_GROUPS, ...groups])], [groups])
-  const filtersActive = query.search !== '' || query.side !== 'all' || query.group !== 'all' || query.rsvp !== 'all' || query.role !== 'all'
+  const filtersActive = query.search !== '' || query.side !== 'all' || query.subSide !== 'all' || query.category !== 'all' || query.rsvp !== 'all'
   const viewerEmail = app.user?.email ?? null
-  const lockedRole = isRestrictedMember(app.wedding, viewerEmail) ? assignedRole(app.wedding, viewerEmail) : null
-  const defaultRole = assignedRole(app.wedding, viewerEmail) ?? 'groom'
+  const placement = placementForRole(assignedRole(app.wedding, viewerEmail))
+  const canReclassify = isCoupleOrOwner(app.wedding, viewerEmail)
+  const categoryCounts = useMemo(() => {
+    const counts = new Map(CATEGORIES.map((item) => [item, 0]))
+    for (const guest of guests ?? []) counts.set(guest.category, (counts.get(guest.category) ?? 0) + 1)
+    return counts
+  }, [guests])
 
   async function saveGuest(draft: GuestDraft) {
     setSaving(true)
@@ -132,16 +135,14 @@ export function GuestListPage() {
                 placeholder="חיפוש לפי שם, טלפון או הערה"
               />
             </label>
-            <label className="field">
-              <span>תפקיד</span>
-              <select value={query.role} onChange={(event) => setQuery({ ...query, role: event.target.value as GuestQuery['role'] })}>
-                <option value="all">הכל</option>
-                <option value="none">ללא תפקיד</option>
-                {WEDDING_ROLES.map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className="chip-row" role="tablist" aria-label="סינון לפי קירבה">
+              <button type="button" className={query.subSide === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.subSide === 'all'} onClick={() => setQuery({ ...query, subSide: 'all' })}>הכל</button>
+              {SUB_SIDES.map((item) => (
+                <button key={item} type="button" className={query.subSide === item ? 'chip chip-on' : 'chip'} aria-pressed={query.subSide === item} onClick={() => setQuery({ ...query, subSide: item })}>
+                  {SUB_SIDE_LABELS[item]}
+                </button>
+              ))}
+            </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי צד">
               <button type="button" className={query.side === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.side === 'all'} onClick={() => setQuery({ ...query, side: 'all' })}>הכל</button>
               {SIDES.map((side) => (
@@ -151,15 +152,14 @@ export function GuestListPage() {
               ))}
               <button type="button" className={query.side === 'unspecified' ? 'chip chip-on' : 'chip'} aria-pressed={query.side === 'unspecified'} onClick={() => setQuery({ ...query, side: 'unspecified' })}>לא צוין</button>
             </div>
-            <label className="field">
-              <span>קבוצה</span>
-              <select value={query.group} onChange={(event) => setQuery({ ...query, group: event.target.value })}>
-                <option value="all">הכל</option>
-                {groups.map((group) => (
-                  <option key={group} value={group}>{group}</option>
-                ))}
-              </select>
-            </label>
+            <div className="chip-row" role="tablist" aria-label="סינון לפי קטגוריה">
+              <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
+              {CATEGORIES.map((item) => (
+                <button key={item} type="button" className={query.category === item ? 'chip chip-on' : 'chip'} aria-pressed={query.category === item} onClick={() => setQuery({ ...query, category: item })}>
+                  {CATEGORY_LABELS[item]} {categoryCounts.get(item) ?? 0}
+                </button>
+              ))}
+            </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
               <button type="button" className={query.rsvp === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.rsvp === 'all'} onClick={() => setQuery({ ...query, rsvp: 'all' })}>הכל</button>
               {RSVP_STATUSES.map((status) => (
@@ -200,9 +200,9 @@ export function GuestListPage() {
                     <tr>
                       <th>שם</th>
                       <th>טלפון</th>
-                      <th>תפקיד</th>
+                      <th>קירבה</th>
                       <th>צד</th>
-                      <th>קבוצה</th>
+                      <th>קטגוריה</th>
                       <th>אנשים</th>
                       <th>סטטוס</th>
                       <th>פעולות</th>
@@ -216,9 +216,9 @@ export function GuestListPage() {
                           {guest.notes && <span className="cell-note">{guest.notes}</span>}
                         </td>
                         <td className="ltr-inline" dir="ltr">{guest.phone || '—'}</td>
-                        <td>{roleLabel(guest.role)}</td>
+                        <td>{guest.subSide === 'none' ? '—' : SUB_SIDE_LABELS[guest.subSide]}</td>
                         <td>{sideLabel(guest.side)}</td>
-                        <td>{guest.group || '—'}</td>
+                        <td>{CATEGORY_LABELS[guest.category]}</td>
                         <td>
                           {guest.partySize}
                           {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
@@ -250,12 +250,14 @@ export function GuestListPage() {
                         </OverflowMenu>
                       )}
                     </div>
-                    <p>{guest.group || 'ללא קבוצה'}</p>
+                    <p className="guest-chips">
+                      <span className="mini-chip">{sideLabel(guest.side)}</span>
+                      {guest.subSide !== 'none' && <span className="mini-chip">{SUB_SIDE_LABELS[guest.subSide]}</span>}
+                      <span className="mini-chip">{CATEGORY_LABELS[guest.category]}</span>
+                    </p>
                     <p className="guest-meta">
                       <span className="ltr-inline" dir="ltr">{guest.phone || 'בלי טלפון'}</span>
                       <span>{guest.partySize} אנשים</span>
-                      <span>{roleLabel(guest.role)}</span>
-                      <span>{sideLabel(guest.side)}</span>
                       {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
                     </p>
                     {guest.notes && <p className="cell-note">{guest.notes}</p>}
@@ -283,10 +285,9 @@ export function GuestListPage() {
           <GuestForm
             key={modal.guest?.id ?? 'new'}
             guest={modal.guest}
-            groups={formGroups}
             saving={saving}
-            lockedRole={lockedRole}
-            defaultRole={defaultRole}
+            placement={placement}
+            canReclassify={canReclassify}
             onCancel={() => setModal({ type: 'none' })}
             onSubmit={saveGuest}
             onDelete={modal.guest ? () => setModal({ type: 'delete', guest: modal.guest as Guest }) : undefined}
@@ -314,9 +315,7 @@ export function GuestListPage() {
         {modal.type === 'contacts' && (
           <ContactsImportDialog
             guests={guests ?? []}
-            groups={formGroups}
-            lockedRole={lockedRole}
-            defaultRole={defaultRole}
+            placement={placement}
             onClose={() => setModal({ type: 'none' })}
             onCreate={importContacts}
           />

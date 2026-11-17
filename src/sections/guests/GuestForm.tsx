@@ -1,56 +1,54 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { PRESET_GROUPS, RSVP_LABELS, sideLabel } from '../../domain/labels.ts'
-import { roleLabel, sideForRole, WEDDING_ROLES } from '../../domain/roles.ts'
-import type { WeddingRoleId } from '../../domain/roles.ts'
-import { RSVP_STATUSES } from '../../domain/types.ts'
-import type { Guest, GuestDraft, RsvpStatus } from '../../domain/types.ts'
+import { CATEGORY_LABELS, RSVP_LABELS, SIDE_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
+import { RSVP_STATUSES, CATEGORIES, SUB_SIDES } from '../../domain/types.ts'
+import type { Category, Guest, GuestDraft, RsvpStatus, SubSide } from '../../domain/types.ts'
 import { normalizeDraft } from '../../domain/validation.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
-const CUSTOM_GROUP = '__custom__'
-
 export function GuestForm({
   guest,
-  groups,
   saving,
-  lockedRole,
-  defaultRole,
+  placement,
+  canReclassify,
   onCancel,
   onSubmit,
   onDelete,
 }: {
   guest: Guest | null
-  groups: readonly string[]
   saving: boolean
-  lockedRole: WeddingRoleId | null
-  defaultRole: WeddingRoleId
+  placement: { side: 'groom' | 'bride'; subSide: SubSide }
+  canReclassify: boolean
   onCancel: () => void
   onSubmit: (draft: GuestDraft) => Promise<void>
   onDelete?: () => void
 }) {
-  const options = [...new Set([...PRESET_GROUPS, ...groups.filter(Boolean)])]
+  const adding = guest === null
+  const lockPlacement = adding || !canReclassify
   const [fullName, setFullName] = useState(guest?.fullName ?? '')
   const [phone, setPhone] = useState(guest?.phone ?? '')
-  const [role, setRole] = useState<WeddingRoleId | ''>(lockedRole ?? guest?.role ?? (guest ? '' : defaultRole))
-  const [group, setGroup] = useState(guest?.group ?? '')
-  const [customGroup, setCustomGroup] = useState(() => group !== '' && !options.includes(group))
+  const [side, setSide] = useState<'groom' | 'bride'>(guest?.side === 'bride' ? 'bride' : placement.side)
+  const [subSide, setSubSide] = useState<SubSide>(guest?.subSide ?? placement.subSide)
+  const [category, setCategory] = useState<Category>(guest?.category ?? (adding ? 'family' : 'other'))
   const [partySize, setPartySize] = useState(String(guest?.partySize ?? 1))
   const [rsvp, setRsvp] = useState<RsvpStatus>(guest?.rsvp ?? 'pending')
   const [notes, setNotes] = useState(guest?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
+  const fixedSide = lockPlacement ? (adding ? placement.side : (guest?.side === 'bride' || guest?.side === 'groom' ? guest.side : placement.side)) : side
+  const fixedSubSide = lockPlacement ? (adding ? placement.subSide : (guest?.subSide ?? placement.subSide)) : subSide
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const parsedSize = Number(partySize)
     try {
-      const chosen = lockedRole ?? (role || null)
       const draft = normalizeDraft({
         fullName,
         phone,
-        side: chosen ? sideForRole(chosen) : guest?.side ?? null,
-        role: chosen,
-        group,
+        side: fixedSide,
+        subSide: fixedSubSide,
+        category,
+        role: guest?.role ?? null,
+        group: guest?.group ?? '',
         partySize: parsedSize,
         partySizeAssumed: false,
         rsvp,
@@ -82,54 +80,41 @@ export function GuestForm({
           className="ltr-field"
         />
       </label>
-      <label className="field">
-        <span>תפקיד</span>
-        {lockedRole ? (
-          <input value={roleLabel(lockedRole)} readOnly />
-        ) : (
-          <select value={role} onChange={(event) => setRole(event.target.value as WeddingRoleId | '')}>
-            {guest && !guest.role && <option value="">ללא תפקיד</option>}
-            {WEDDING_ROLES.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        )}
-      </label>
-      <p className="hint">צד: {sideLabel((lockedRole ?? (role || null)) ? sideForRole((lockedRole ?? role) as WeddingRoleId) : guest?.side ?? null)}</p>
       <div className="field">
-        <label htmlFor="guest-group">קבוצה</label>
-        <select
-          id="guest-group"
-          value={customGroup ? CUSTOM_GROUP : group}
-          onChange={(event) => {
-            const next = event.target.value
-            if (next === CUSTOM_GROUP) {
-              setCustomGroup(true)
-              setGroup('')
-              return
-            }
-            setCustomGroup(false)
-            setGroup(next)
-          }}
-        >
-          <option value="">ללא קבוצה</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-          <option value={CUSTOM_GROUP}>קבוצה אחרת…</option>
-        </select>
-        {customGroup && (
-          <input
-            value={group}
-            onChange={(event) => setGroup(event.target.value)}
-            placeholder="לדוגמה: חברים / חברים צבא"
-            aria-label="שם הקבוצה"
-          />
+        <span>צד וקירבה</span>
+        {lockPlacement ? (
+          <p className="locked-placement">
+            <span className="mini-chip">{sideLabel(fixedSide)}</span>
+            <span className="mini-chip">{SUB_SIDE_LABELS[fixedSubSide]}</span>
+          </p>
+        ) : (
+          <>
+            <div className="segment" role="radiogroup" aria-label="צד">
+              {(['groom', 'bride'] as const).map((item) => (
+                <button key={item} type="button" className={side === item ? 'segment-on' : ''} aria-pressed={side === item} onClick={() => setSide(item)}>
+                  {SIDE_LABELS[item]}
+                </button>
+              ))}
+            </div>
+            <div className="segment" role="radiogroup" aria-label="קירבה">
+              {SUB_SIDES.map((item) => (
+                <button key={item} type="button" className={subSide === item ? 'segment-on' : ''} aria-pressed={subSide === item} onClick={() => setSubSide(item)}>
+                  {SUB_SIDE_LABELS[item]}
+                </button>
+              ))}
+            </div>
+          </>
         )}
+      </div>
+      <div className="field">
+        <span>קטגוריה</span>
+        <div className="segment" role="radiogroup" aria-label="קטגוריה">
+          {CATEGORIES.map((item) => (
+            <button key={item} type="button" className={category === item ? 'segment-on' : ''} aria-pressed={category === item} onClick={() => setCategory(item)}>
+              {CATEGORY_LABELS[item]}
+            </button>
+          ))}
+        </div>
       </div>
       <label className="field">
         <span>מספר אנשים (כולל מלווים)</span>

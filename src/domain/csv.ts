@@ -174,6 +174,8 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       rsvp,
       notes: columns.has('notes') ? (row[columns.get('notes') as number] ?? '').trim() : '',
       role: roleFromLabel(cell('role')),
+      subSide: 'none',
+      category: 'other',
     })
   })
 

@@ -1,4 +1,4 @@
-import type { Side } from './types.ts'
+import type { Side, SubSide } from './types.ts'
 
 export const WEDDING_ROLES = [
   { id: 'groom', label: 'חתן', side: 'groom' },
@@ -23,6 +23,16 @@ export function isWeddingRole(value: unknown): value is WeddingRoleId {
 
 export function sideForRole(role: WeddingRoleId): Side {
   return ROLES_BY_ID.get(role)?.side ?? 'groom'
+}
+
+/** Side and sub-side stamped onto guests added by this member. */
+export function placementForRole(role: WeddingRoleId | null): { side: 'groom' | 'bride'; subSide: SubSide } {
+  const id = role ?? 'groom'
+  const side = id.startsWith('bride') ? 'bride' : 'groom'
+  if (id.endsWith('_father') || id.endsWith('_mother')) return { side, subSide: 'parents' }
+  if (id.endsWith('_brother')) return { side, subSide: 'brother' }
+  if (id.endsWith('_sister')) return { side, subSide: 'sister' }
+  return { side, subSide: 'none' }
 }
 
 export function roleLabel(role: WeddingRoleId | null): string {
@@ -64,10 +74,11 @@ export function isRestrictedMember(wedding: RoleAssignment | null, email: string
 export function canEditGuest(
   wedding: RoleAssignment | null,
   email: string | null,
-  guest: { role: WeddingRoleId | null },
+  guest: { side: Side | null; subSide?: SubSide | null },
 ): boolean {
   if (!isRestrictedMember(wedding, email)) return true
-  return guest.role !== null && guest.role === assignedRole(wedding, email)
+  const mine = placementForRole(assignedRole(wedding, email))
+  return guest.side === mine.side && (guest.subSide ?? 'none') === mine.subSide
 }
 
 export function isCoupleOrOwner(wedding: RoleAssignment | null, email: string | null): boolean {

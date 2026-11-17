@@ -85,6 +85,8 @@ service cloud.firestore {
           'fullName',
           'phone',
           'side',
+          'subSide',
+          'category',
           'role',
           'group',
           'partySize',
@@ -110,17 +112,31 @@ service cloud.firestore {
         && data.rsvp in ['pending', 'attending', 'declined', 'maybe']
         && (data.side == null || data.side in ['groom', 'bride', 'shared'])
         && (data.role == null || knownRole(data.role))
-        && (data.role == null || data.side == roleSide(data.role))
+        && (data.role == null || data.side == null || data.side == roleSide(data.role))
+        && (!data.keys().hasAny(['subSide']) || data.subSide == null || data.subSide in ['none', 'parents', 'brother', 'sister'])
+        && (!data.keys().hasAny(['category']) || data.category in ['family', 'friends', 'work', 'other'])
         && data.createdAt is string
         && data.updatedAt is string;
     }
 
+    function subSideOf(data) {
+      return data.keys().hasAny(['subSide']) && data.subSide != null ? data.subSide : 'none';
+    }
+
+    function mySubSide(weddingId) {
+      return myRole(weddingId) == 'groom_father' || myRole(weddingId) == 'groom_mother'
+          || myRole(weddingId) == 'bride_father' || myRole(weddingId) == 'bride_mother' ? 'parents'
+        : myRole(weddingId) == 'groom_brother' || myRole(weddingId) == 'bride_brother' ? 'brother'
+        : myRole(weddingId) == 'groom_sister' || myRole(weddingId) == 'bride_sister' ? 'sister'
+        : 'none';
+    }
+
+    function inMyBucket(weddingId, data) {
+      return data.side == roleSide(myRole(weddingId)) && subSideOf(data) == mySubSide(weddingId);
+    }
+
     function guestWriteAllowed(weddingId) {
-      return !isRestricted(weddingId)
-        || (
-          request.resource.data.role == myRole(weddingId)
-          && request.resource.data.side == roleSide(myRole(weddingId))
-        );
+      return !isRestricted(weddingId) || inMyBucket(weddingId, request.resource.data);
     }
 
     function canModerate(weddingId) {
@@ -259,9 +275,9 @@ service cloud.firestore {
           && validGuest(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
           && guestWriteAllowed(weddingId)
-          && (!isRestricted(weddingId) || resource.data.role == myRole(weddingId));
+          && (!isRestricted(weddingId) || inMyBucket(weddingId, resource.data));
         allow delete: if isMember(weddingId)
-          && (!isRestricted(weddingId) || resource.data.role == myRole(weddingId));
+          && (!isRestricted(weddingId) || inMyBucket(weddingId, resource.data));
       }
 
       match /songs/{songId} {

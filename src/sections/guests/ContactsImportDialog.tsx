@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import { PRESET_GROUPS } from '../../domain/labels.ts'
-import { roleLabel, sideForRole, WEDDING_ROLES } from '../../domain/roles.ts'
-import type { WeddingRoleId } from '../../domain/roles.ts'
-import type { Guest, GuestDraft } from '../../domain/types.ts'
+import { CATEGORY_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
+import { CATEGORIES } from '../../domain/types.ts'
+import type { Category, Guest, GuestDraft, SubSide } from '../../domain/types.ts'
 import { contactsMatch, parseVCards, type ParsedContact } from '../../domain/vcard.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
@@ -39,24 +38,18 @@ function rowsFromContacts(contacts: readonly ParsedContact[], guests: readonly G
 
 export function ContactsImportDialog({
   guests,
-  groups,
-  lockedRole,
-  defaultRole,
+  placement,
   onClose,
   onCreate,
 }: {
   guests: readonly Guest[]
-  groups: readonly string[]
-  lockedRole: WeddingRoleId | null
-  defaultRole: WeddingRoleId
+  placement: { side: 'groom' | 'bride'; subSide: SubSide }
   onClose: () => void
   onCreate: (drafts: GuestDraft[]) => Promise<void>
 }) {
   const picker = useMemo(() => contactPicker(), [])
-  const groupOptions = useMemo(() => [...new Set([...PRESET_GROUPS, ...groups.filter(Boolean)])], [groups])
   const [rows, setRows] = useState<PreviewRow[] | null>(null)
-  const [role, setRole] = useState<WeddingRoleId>(lockedRole ?? defaultRole)
-  const [group, setGroup] = useState('')
+  const [category, setCategory] = useState<Category>('family')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -107,9 +100,11 @@ export function ContactsImportDialog({
       .map((row) => ({
         fullName: row.fullName,
         phone: row.phone,
-        side: sideForRole(lockedRole ?? role),
-        role: lockedRole ?? role,
-        group: group.trim(),
+        side: placement.side,
+        subSide: placement.subSide,
+        category,
+        role: null,
+        group: '',
         partySize: 1,
         partySizeAssumed: false,
         rsvp: 'pending',
@@ -162,32 +157,17 @@ export function ContactsImportDialog({
       {rows && rows.length > 0 && (
         <>
           <div className="import-options">
-            <label className="field">
-              <span>תפקיד</span>
-              {lockedRole ? (
-                <input value={roleLabel(lockedRole)} readOnly />
-              ) : (
-                <select value={role} onChange={(event) => setRole(event.target.value as WeddingRoleId)}>
-                  {WEDDING_ROLES.map((item) => (
-                    <option key={item.id} value={item.id}>{item.label}</option>
-                  ))}
-                </select>
-              )}
-            </label>
-            <label className="field">
-              <span>קבוצה לכולם (לא חובה)</span>
-              <input
-                value={group}
-                onChange={(event) => setGroup(event.target.value)}
-                list="contact-groups"
-                placeholder="למשל: חברים"
-              />
-              <datalist id="contact-groups">
-                {groupOptions.map((option) => (
-                  <option key={option} value={option} />
-                ))}
-              </datalist>
-            </label>
+            <p className="locked-placement">
+              <span className="mini-chip">{sideLabel(placement.side)}</span>
+              <span className="mini-chip">{SUB_SIDE_LABELS[placement.subSide]}</span>
+            </p>
+            <div className="segment" role="radiogroup" aria-label="קטגוריה">
+              {CATEGORIES.map((item) => (
+                <button key={item} type="button" className={category === item ? 'segment-on' : ''} aria-pressed={category === item} onClick={() => setCategory(item)}>
+                  {CATEGORY_LABELS[item]}
+                </button>
+              ))}
+            </div>
           </div>
           <ul className="contact-list">
             {rows.map((row) => (

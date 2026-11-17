@@ -1,6 +1,6 @@
 import { ValidationError } from './errors.ts'
-import { isWeddingRole, sideForRole } from './roles.ts'
-import { isRsvp, isSide } from './types.ts'
+import { isWeddingRole } from './roles.ts'
+import { isCategory, isRsvp, isSide, isSubSide } from './types.ts'
 import type { Guest, GuestDraft } from './types.ts'
 
 export function collapseSpaces(value: string): string {
@@ -28,8 +28,10 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
   }
   const role = isWeddingRole(input.role) ? input.role : null
   if (input.role !== null && !role) errors.push('role')
-  const side = role ? sideForRole(role) : input.side
+  const side = input.side
   if (side !== null && !isSide(side)) errors.push('side')
+  if (!isSubSide(input.subSide)) errors.push('sub-side')
+  if (!isCategory(input.category)) errors.push('category')
   if (!isRsvp(input.rsvp)) errors.push('rsvp')
   if (typeof input.partySizeAssumed !== 'boolean') errors.push('assumed')
   if (errors.length > 0) throw new ValidationError(errors)
@@ -38,6 +40,8 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
     fullName,
     phone,
     side,
+    subSide: input.subSide,
+    category: input.category,
     role,
     group,
     partySize: input.partySize,
@@ -59,6 +63,8 @@ export function parseStoredGuest(value: unknown): Guest | null {
       fullName: typeof record.fullName === 'string' ? record.fullName : '',
       phone: typeof record.phone === 'string' ? record.phone : '',
       side: side as GuestDraft['side'],
+      subSide: isSubSide(record.subSide) ? record.subSide : 'none',
+      category: isCategory(record.category) ? record.category : 'other',
       group: typeof record.group === 'string' ? record.group : '',
       partySize: typeof record.partySize === 'number' ? record.partySize : Number.NaN,
       partySizeAssumed: record.partySizeAssumed === true,

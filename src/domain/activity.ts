@@ -72,6 +72,8 @@ const FIELD_LABELS: Record<string, string> = {
   side: 'צד',
   role: 'תפקיד',
   group: 'קבוצה',
+  subSide: 'קירבה',
+  category: 'קטגוריה',
   partySize: 'מספר אנשים',
   notes: 'הערה',
 }
@@ -275,6 +277,8 @@ function changedGuestFields(before: Guest, after: Guest): string[] {
   if (before.side !== after.side) fields.push('side')
   if (before.role !== after.role) fields.push('role')
   if (before.group !== after.group) fields.push('group')
+  if (before.subSide !== after.subSide) fields.push('subSide')
+  if (before.category !== after.category) fields.push('category')
   if (before.partySize !== after.partySize) fields.push('partySize')
   if (before.notes !== after.notes) fields.push('notes')
   return fields
