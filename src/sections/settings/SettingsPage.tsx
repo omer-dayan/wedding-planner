@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { displayMembers } from '../../domain/members.ts'
-import { assignedRole, roleLabel, WEDDING_ROLES } from '../../domain/roles.ts'
+import { assignedRole, isCoupleOrOwner, roleLabel, WEDDING_ROLES } from '../../domain/roles.ts'
 import type { WeddingRoleId } from '../../domain/roles.ts'
+import {
+  createVenueQuestion,
+  normalizeVenueQuestions,
+  VENUE_QUESTION_TYPE_LABELS,
+  VENUE_QUESTION_TYPES,
+  type VenueQuestion,
+  type VenueQuestionType,
+} from '../../domain/venueQuestions.ts'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
@@ -31,6 +39,7 @@ export function SettingsPage() {
           </p>
         </div>
         <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
+        <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
         <BuildStamp />
       </section>
     )
@@ -190,8 +199,114 @@ export function SettingsPage() {
         )}
       </div>
       <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
+      {isCoupleOrOwner(wedding, app.user.email) && (
+        <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
+      )}
       <BuildStamp />
     </section>
+  )
+}
+
+function VenueQuestionsEditor({
+  questions,
+  onSave,
+}: {
+  questions: readonly VenueQuestion[]
+  onSave: ((questions: VenueQuestion[]) => Promise<void>) | null
+}) {
+  const [draft, setDraft] = useState<VenueQuestion[]>(() => questions.map((question) => ({ ...question })))
+  const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => setDraft(questions.map((question) => ({ ...question }))), [questions])
+  if (!onSave && questions.length === 0) return null
+
+  function update(id: string, patch: Partial<VenueQuestion>) {
+    setDraft((current) => current.map((question) => (question.id === id ? { ...question, ...patch } : question)))
+  }
+
+  function move(index: number, direction: -1 | 1) {
+    setDraft((current) => {
+      const next = [...current]
+      const target = index + direction
+      if (target < 0 || target >= next.length) return current
+      const [item] = next.splice(index, 1)
+      next.splice(target, 0, item)
+      return next
+    })
+  }
+
+  return (
+    <form
+      className="panel stack-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!onSave) return
+        setBusy(true)
+        setError(null)
+        setStatus(null)
+        try {
+          const next = normalizeVenueQuestions(draft)
+          void onSave(next)
+            .then(() => setStatus('שאלות האולמות נשמרו.'))
+            .catch((failure: unknown) => setError(messageFrom(failure)))
+            .finally(() => setBusy(false))
+        } catch (failure) {
+          setError(messageFrom(failure))
+          setBusy(false)
+        }
+      }}
+    >
+      <h2>שאלות לאולמות</h2>
+      <p>השאלות האלה מופיעות בכל אולם. שינוי ניסוח שומר את התשובות, כי הן קשורות למזהה הקבוע.</p>
+      {draft.length === 0 && <p className="hint">עדיין אין שאלות.</p>}
+      <ul className="question-editor">
+        {draft.map((question, index) => (
+          <li key={question.id}>
+            <label className="field grow">
+              <span className="visually-hidden">ניסוח השאלה</span>
+              <input
+                value={question.label}
+                disabled={!onSave}
+                onChange={(event) => update(question.id, { label: event.target.value })}
+                placeholder="למשל: יש חניה?"
+              />
+            </label>
+            <label className="field">
+              <span className="visually-hidden">סוג השאלה</span>
+              <select
+                value={question.type}
+                disabled={!onSave}
+                onChange={(event) => update(question.id, { type: event.target.value as VenueQuestionType })}
+              >
+                {VENUE_QUESTION_TYPES.map((type) => (
+                  <option key={type} value={type}>{VENUE_QUESTION_TYPE_LABELS[type]}</option>
+                ))}
+              </select>
+            </label>
+            {onSave && (
+              <div className="question-actions">
+                <button type="button" className="btn btn-ghost btn-small" disabled={index === 0} onClick={() => move(index, -1)} aria-label="הזזה למעלה">↑</button>
+                <button type="button" className="btn btn-ghost btn-small" disabled={index === draft.length - 1} onClick={() => move(index, 1)} aria-label="הזזה למטה">↓</button>
+                <button type="button" className="btn btn-danger btn-small" onClick={() => setDraft((current) => current.filter((item) => item.id !== question.id))}>
+                  מחיקה
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {onSave && (
+        <div className="form-actions">
+          <button type="button" className="btn btn-ghost" disabled={busy || draft.length >= 20} onClick={() => setDraft((current) => [...current, createVenueQuestion()])}>
+            הוספת שאלה
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'שומר…' : 'שמירת שאלות'}</button>
+        </div>
+      )}
+      {status && <p className="hint">{status}</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+    </form>
   )
 }
 

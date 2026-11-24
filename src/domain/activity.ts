@@ -7,6 +7,7 @@ import { venueStatusLabel, type VenueStatusId, isVenueStatus } from './venues.ts
 import type { Guest } from './types.ts'
 import type { Song } from './songs.ts'
 import type { Venue } from './venues.ts'
+import type { VenueQuestion } from './venueQuestions.ts'
 
 export const ACTIVITY_TYPES = [
   'guest_added',
@@ -19,6 +20,8 @@ export const ACTIVITY_TYPES = [
   'venue_added',
   'venue_status',
   'venue_video',
+  'venue_questions',
+  'venue_answers',
   'member_added',
   'role_changed',
 ] as const
@@ -122,6 +125,10 @@ export function describeActivity(event: Pick<ActivityEvent, 'type' | 'entityName
       return `${who} ${verb('שינה', 'שינתה', feminine)} את הסטטוס של ${name} ל${statusText(event.details.to)}`
     case 'venue_video':
       return `${who} ${verb('הוסיף', 'הוסיפה', feminine)} סרטון לאולם ${name}`
+    case 'venue_questions':
+      return `${who} ${verb('עדכן', 'עדכנה', feminine)} את שאלות האולמות`
+    case 'venue_answers':
+      return `${who} ${verb('ענה', 'ענתה', feminine)} על שאלות האולם ${name}`
     case 'member_added':
       return `${who} ${verb('הוסיף', 'הוסיפה', feminine)} את ${name} כשותף`
     case 'role_changed':
@@ -237,7 +244,28 @@ export function venueActivity(before: Venue | null, after: Venue | null): Activi
   if (addedVideo) {
     inputs.push({ type: 'venue_video', entity: 'venue', entityId: after.id, entityName: after.name })
   }
+  if (!sameAnswers(before.answers, after.answers)) {
+    inputs.push({ type: 'venue_answers', entity: 'venue', entityId: after.id, entityName: after.name })
+  }
   return inputs
+}
+
+export function venueQuestionsInput(questions: readonly VenueQuestion[]): ActivityInput {
+  return {
+    type: 'venue_questions',
+    entity: 'venue',
+    entityId: 'questions',
+    entityName: 'שאלות אולמות',
+    details: { count: questions.length, names: questions.slice(0, 5).map((question) => question.label) },
+  }
+}
+
+function sameAnswers(before: Record<string, string>, after: Record<string, string>): boolean {
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)])
+  for (const key of keys) {
+    if ((before[key] ?? '') !== (after[key] ?? '')) return false
+  }
+  return true
 }
 
 export function importActivity(guests: readonly { id: string; fullName: string }[]): ActivityInput {

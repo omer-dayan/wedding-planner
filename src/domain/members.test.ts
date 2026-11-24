@@ -9,6 +9,7 @@ function wedding(overrides: Partial<Wedding>): Wedding {
     memberEmails: ['owner@example.com'],
     memberRoles: { 'owner@example.com': 'groom' },
     weddingDate: '',
+    venueQuestions: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,

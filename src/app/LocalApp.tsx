@@ -6,10 +6,13 @@ import { createLocalVenueRepository, VENUE_STORAGE_KEY } from '../data/venueRepo
 import { browserStorage } from '../data/storage.ts'
 import type { ActivityActor } from '../domain/activity.ts'
 import { normalizeWeddingDate } from '../domain/members.ts'
+import { normalizeVenueQuestions, readVenueQuestions, type VenueQuestion } from '../domain/venueQuestions.ts'
+import { venueQuestionsInput } from '../domain/activity.ts'
 import { AppShell } from '../layout/AppShell.tsx'
 import { AppServicesProvider, type AppServices } from './context.tsx'
 
 const DATE_KEY = 'wedding-planner.weddingDate'
+const QUESTIONS_KEY = 'wedding-planner.venueQuestions'
 
 const localActor: ActivityActor = { email: '', name: 'מכשיר זה', role: 'groom', photoUrl: '' }
 
@@ -20,6 +23,13 @@ export function LocalApp() {
   const songs = useMemo(() => createLocalSongRepository(storage, SONG_STORAGE_KEY, activity), [storage, activity])
   const venues = useMemo(() => createLocalVenueRepository(storage, VENUE_STORAGE_KEY, activity), [storage, activity])
   const [weddingDate, setWeddingDate] = useState(() => storage.getItem(DATE_KEY) ?? '')
+  const [venueQuestions, setVenueQuestions] = useState<VenueQuestion[]>(() => {
+    try {
+      return readVenueQuestions(JSON.parse(storage.getItem(QUESTIONS_KEY) || '[]'))
+    } catch {
+      return []
+    }
+  })
   const value = useMemo<AppServices>(
     () => ({
       mode: 'local',
@@ -31,10 +41,17 @@ export function LocalApp() {
       wedding: null,
       weddings: [],
       weddingDate,
+      venueQuestions,
       onSetWeddingDate: async (date) => {
         const next = normalizeWeddingDate(date)
         storage.setItem(DATE_KEY, next)
         setWeddingDate(next)
+      },
+      onSetVenueQuestions: async (questions) => {
+        const next = normalizeVenueQuestions(questions)
+        storage.setItem(QUESTIONS_KEY, JSON.stringify(next))
+        setVenueQuestions(next)
+        activity.append(venueQuestionsInput(next))
       },
       onSignOut: null,
       onSelectWedding: null,
@@ -43,7 +60,7 @@ export function LocalApp() {
       onSetMemberRole: null,
       onRemoveMember: null,
     }),
-    [activity, guests, songs, venues, storage, weddingDate],
+    [activity, guests, songs, venues, storage, weddingDate, venueQuestions],
   )
 
   return (

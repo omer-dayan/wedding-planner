@@ -41,6 +41,8 @@ import type { ActivityLogger, ActivityRepository } from './activityLog.ts'
 import { recordActivity } from './activityLog.ts'
 import type { ActivityActor, ActivityInput } from '../domain/activity.ts'
 import { guestActivity, importActivity } from '../domain/activity.ts'
+import { normalizeVenueQuestions, readVenueQuestions } from '../domain/venueQuestions.ts'
+import type { VenueQuestion } from '../domain/venueQuestions.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
 import { emailVariants, normalizeWeddingDate, normalizeWeddingName, type Wedding } from '../domain/members.ts'
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
@@ -52,6 +54,11 @@ export interface WeddingRepository {
   create(ownerEmail: string, name?: string): Promise<Wedding>
   updateName(id: string, name: string): Promise<void>
   updateDate(id: string, weddingDate: string): Promise<void>
+  updateQuestions(
+    id: string,
+    questions: readonly VenueQuestion[],
+    activity?: { logger: ActivityLogger; inputs: readonly ActivityInput[] },
+  ): Promise<void>
   updateMembers(
     id: string,
     memberEmails: readonly string[],
@@ -193,6 +200,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         memberEmails: emailVariants(ownerEmail),
         memberRoles: { [ownerEmail.trim().toLowerCase()]: 'groom' },
         weddingDate: '',
+        venueQuestions: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       }
@@ -202,6 +210,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         memberEmails: wedding.memberEmails,
         memberRoles: wedding.memberRoles,
         weddingDate: wedding.weddingDate,
+        venueQuestions: wedding.venueQuestions,
         createdAt: wedding.createdAt,
         updatedAt: wedding.updatedAt,
       })
@@ -218,6 +227,15 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         weddingDate: normalizeWeddingDate(weddingDate),
         updatedAt: new Date().toISOString(),
       })
+    },
+    async updateQuestions(id, questions, activity) {
+      const batch = writeBatch(db)
+      batch.update(doc(weddings, id), {
+        venueQuestions: normalizeVenueQuestions(questions),
+        updatedAt: new Date().toISOString(),
+      })
+      if (activity) recordActivity(activity.logger, activity.inputs, batch)
+      await batch.commit()
     },
     async updateMembers(id, memberEmails, memberRoles, activity) {
       const batch = writeBatch(db)
@@ -419,6 +437,7 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     memberEmails,
     memberRoles,
     weddingDate: typeof data.weddingDate === 'string' ? data.weddingDate : '',
+    venueQuestions: readVenueQuestions(data.venueQuestions),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
   }

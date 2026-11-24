@@ -13,6 +13,7 @@ describe('venues', () => {
       visitDate: '',
       notes: '',
       tiktokUrls: [],
+      answers: {},
     })).toThrow(/venue-name-required/)
     expect(tiktokVideoId('https://www.tiktok.com/@hall/video/1234567890')).toBe('1234567890')
     expect(tiktokVideoId('https://vm.tiktok.com/ZMabc/')).toBeNull()
@@ -37,6 +38,7 @@ describe('venues', () => {
       visitDate,
       notes: '',
       tiktokUrls: [],
+      answers: {},
       addedByEmail: '',
       createdAt: '',
       updatedAt: '',

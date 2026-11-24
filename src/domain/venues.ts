@@ -1,5 +1,6 @@
 import { ValidationError } from './errors.ts'
 import { isCoupleOrOwner, type RoleAssignment } from './roles.ts'
+import { sanitizeAnswers } from './venueQuestions.ts'
 
 export const VENUE_STATUSES = [
   { id: 'want', label: 'רוצים לראות' },
@@ -21,6 +22,7 @@ export interface VenueDraft {
   visitDate: string
   notes: string
   tiktokUrls: string[]
+  answers: Record<string, string>
 }
 
 export interface Venue extends VenueDraft {
@@ -170,6 +172,7 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
     visitDate,
     notes,
     tiktokUrls,
+    answers: sanitizeAnswers(input.answers),
   }
 }
 
@@ -190,6 +193,7 @@ export function parseStoredVenue(value: unknown): Venue | null {
       visitDate: typeof record.visitDate === 'string' ? record.visitDate : '',
       notes: typeof record.notes === 'string' ? record.notes : '',
       tiktokUrls: urls,
+      answers: sanitizeAnswers(record.answers),
     })
   } catch {
     return null

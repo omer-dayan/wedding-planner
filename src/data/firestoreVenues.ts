@@ -64,7 +64,7 @@ export function createFirestoreVenueRepository(db: Firestore, weddingId: string,
   }
 }
 
-function venueToDoc(venue: Venue): Record<string, string | string[]> {
+function venueToDoc(venue: Venue): Record<string, string | string[] | Record<string, string>> {
   return {
     name: venue.name,
     city: venue.city,
@@ -75,6 +75,7 @@ function venueToDoc(venue: Venue): Record<string, string | string[]> {
     visitDate: venue.visitDate,
     notes: venue.notes,
     tiktokUrls: venue.tiktokUrls,
+    answers: venue.answers,
     addedByEmail: venue.addedByEmail,
     createdAt: venue.createdAt,
     updatedAt: venue.updatedAt,

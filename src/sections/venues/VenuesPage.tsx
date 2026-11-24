@@ -18,6 +18,7 @@ import {
   type VenueDraft,
   type VenueStatusId,
 } from '../../domain/venues.ts'
+import { answerProgress, formatAnswer, mergeAnswers, type VenueQuestion } from '../../domain/venueQuestions.ts'
 import { Fab } from '../../ui/Fab.tsx'
 import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
@@ -124,7 +125,9 @@ export function VenuesPage() {
             </div>
           ) : (
             <ul className="venue-list">
-              {visible.map((venue) => (
+              {visible.map((venue) => {
+                const progress = answerProgress(app.venueQuestions, venue.answers)
+                return (
                 <li key={venue.id} className={`venue-card venue-${venue.status}`}>
                   <div className={`venue-cover venue-cover-${venue.status}`} aria-hidden="true">
                     <BuildingIcon />
@@ -143,6 +146,10 @@ export function VenuesPage() {
                         </OverflowMenu>
                       )}
                     </div>
+                    {progress.total > 0 && (
+                      <p className="answer-progress">{progress.answered}/{progress.total} נענו</p>
+                    )}
+                    <AnswerList questions={app.venueQuestions} answers={venue.answers} />
                     <div className="status-wrap">
                       <button
                         type="button"
@@ -192,7 +199,8 @@ export function VenuesPage() {
                     <VenueVideos urls={venue.tiktokUrls} />
                   </div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
         </>
@@ -214,6 +222,7 @@ export function VenuesPage() {
           <VenueForm
             key={editing === 'new' ? 'new' : editing.id}
             venue={editing === 'new' ? null : editing}
+            questions={app.venueQuestions}
             saving={saving}
             onCancel={() => setEditing(null)}
             onSubmit={save}
@@ -276,6 +285,38 @@ function FilterChip({ active, count, onClick, children }: { active: boolean; cou
   )
 }
 
+function QuestionField({ question, value, onChange }: { question: VenueQuestion; value: string; onChange: (value: string) => void }) {
+  if (question.type === 'yesno') {
+    return (
+      <div className="field">
+        <span>{question.label}</span>
+        <div className="segment" role="group" aria-label={question.label}>
+          <button type="button" className={value === 'yes' ? 'segment-on' : undefined} onClick={() => onChange(value === 'yes' ? '' : 'yes')}>כן</button>
+          <button type="button" className={value === 'no' ? 'segment-on' : undefined} onClick={() => onChange(value === 'no' ? '' : 'no')}>לא</button>
+        </div>
+      </div>
+    )
+  }
+  if (question.type === 'long') {
+    return (
+      <label className="field">
+        <span>{question.label}</span>
+        <textarea value={value} rows={3} onChange={(event) => onChange(event.target.value)} />
+      </label>
+    )
+  }
+  return (
+    <label className="field">
+      <span>{question.label}</span>
+      <input
+        value={value}
+        inputMode={question.type === 'number' ? 'decimal' : 'text'}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  )
+}
+
 function formatVisit(value: string): string {
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value
@@ -298,13 +339,30 @@ function TikTokIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4c.4 2.4 1.8 4 4 4.4v2.2c-1.4 0-2.7-.4-4-1.2v6.2a5.6 5.6 0 1 1-5.6-5.6c.3 0 .6 0 .9.1v2.4a3.2 3.2 0 1 0 2.3 3.1V4z" fill="currentColor" /></svg>
 }
 
+function AnswerList({ questions, answers }: { questions: readonly VenueQuestion[]; answers: Record<string, string> }) {
+  const filled = questions.filter((question) => (answers[question.id] ?? '').trim() !== '')
+  if (filled.length === 0) return null
+  return (
+    <ul className="answer-list">
+      {filled.map((question) => (
+        <li key={question.id}>
+          <span>{question.label}</span>
+          <strong>{formatAnswer(question, answers[question.id] ?? '')}</strong>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function VenueForm({
   venue,
+  questions,
   saving,
   onCancel,
   onSubmit,
 }: {
   venue: Venue | null
+  questions: readonly VenueQuestion[]
   saving: boolean
   onCancel: () => void
   onSubmit: (draft: VenueDraft) => Promise<void>
@@ -318,6 +376,11 @@ function VenueForm({
   const [visitDate, setVisitDate] = useState(venue?.visitDate ?? '')
   const [notes, setNotes] = useState(venue?.notes ?? '')
   const [tiktokUrls, setTiktokUrls] = useState<string[]>(venue?.tiktokUrls ?? [])
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    const next: Record<string, string> = {}
+    for (const question of questions) next[question.id] = venue?.answers[question.id] ?? ''
+    return next
+  })
   const [videoUrl, setVideoUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -345,6 +408,7 @@ function VenueForm({
         visitDate,
         notes,
         tiktokUrls,
+        answers: mergeAnswers(venue?.answers ?? {}, questions, answers),
       })
       await onSubmit(draft)
     } catch (failure) {
@@ -390,6 +454,14 @@ function VenueForm({
         <span>הערות</span>
         <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} />
       </label>
+      {questions.map((question) => (
+        <QuestionField
+          key={question.id}
+          question={question}
+          value={answers[question.id] ?? ''}
+          onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))}
+        />
+      ))}
       <div className="field">
         <span>סרטוני טיקטוק</span>
         <div className="member-add">

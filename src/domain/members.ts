@@ -1,5 +1,6 @@
 import { DomainError } from './errors.ts'
 import type { WeddingRoleId } from './roles.ts'
+import type { VenueQuestion } from './venueQuestions.ts'
 
 export interface Wedding {
   id: string
@@ -8,6 +9,7 @@ export interface Wedding {
   memberEmails: string[]
   memberRoles: Record<string, WeddingRoleId>
   weddingDate: string
+  venueQuestions: VenueQuestion[]
   createdAt: string
   updatedAt: string
 }

@@ -9,7 +9,7 @@ import {
   type WeddingRepository,
 } from '../data/firebaseBackend.ts'
 import type { FirebaseWebConfig } from '../data/firebaseConfig.ts'
-import { memberAddedInput, roleChangedInput, type ActivityActor } from '../domain/activity.ts'
+import { memberAddedInput, roleChangedInput, venueQuestionsInput, type ActivityActor } from '../domain/activity.ts'
 import { addMemberEmail, chooseWedding, removeMemberEmail, type Wedding } from '../domain/members.ts'
 import { assignedRole, cleanMemberRoles, isCoupleOrOwner } from '../domain/roles.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
@@ -199,7 +199,11 @@ function WeddingSession({
     wedding,
     weddings,
     weddingDate: wedding.weddingDate,
+    venueQuestions: wedding.venueQuestions,
     onSetWeddingDate: canEditDate ? (date) => weddingsRepo.updateDate(wedding.id, date) : null,
+    onSetVenueQuestions: canEditDate
+      ? (questions) => weddingsRepo.updateQuestions(wedding.id, questions, { logger: activity, inputs: [venueQuestionsInput(questions)] })
+      : null,
     onSignOut: () => signOutUser(services.auth),
     onSelectWedding,
     onRenameWedding: (name) => weddingsRepo.updateName(wedding.id, name),
