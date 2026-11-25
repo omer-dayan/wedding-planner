@@ -149,14 +149,16 @@ function FeedComments({
 
   async function submit(event?: FormEvent) {
     event?.preventDefault()
-    if (busy || draft.trim() === '') return
+    const text = draft.trim()
+    if (busy || text === '') return
     setBusy(true)
     setError(null)
+    setDraft('')
     try {
-      await onAdd(draft)
-      setDraft('')
+      await onAdd(text)
       setExpanded(true)
     } catch (failure) {
+      setDraft(text)
       setError(messageFrom(failure))
     } finally {
       setBusy(false)
@@ -166,7 +168,7 @@ function FeedComments({
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      void submit()
+      event.currentTarget.form?.requestSubmit()
     }
   }
 
