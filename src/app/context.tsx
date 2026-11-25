@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { AppContext } from './appContext.ts'
+import type { ActivityCommentRepository } from '../data/activityCommentRepository.ts'
 import type { ActivityRepository } from '../data/activityLog.ts'
 import type { GuestRepository } from '../data/guestRepository.ts'
 import type { SongRepository } from '../data/songRepository.ts'
@@ -20,6 +21,7 @@ export interface AppServices {
   songs: SongRepository
   venues: VenueRepository
   activity: ActivityRepository
+  activityComments: ActivityCommentRepository
   user: SessionUser | null
   wedding: Wedding | null
   weddings: readonly Wedding[]

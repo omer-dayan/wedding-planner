@@ -37,6 +37,8 @@ import { createFirestoreSongRepository } from './firestoreSongs.ts'
 import { createFirestoreVenueRepository } from './firestoreVenues.ts'
 import type { VenueRepository } from './venueRepository.ts'
 import { createFirestoreActivityRepository } from './firestoreActivity.ts'
+import { createFirestoreActivityCommentRepository } from './firestoreActivityComments.ts'
+import type { ActivityCommentRepository } from './activityCommentRepository.ts'
 import type { ActivityLogger, ActivityRepository } from './activityLog.ts'
 import { recordActivity } from './activityLog.ts'
 import type { ActivityActor, ActivityInput } from '../domain/activity.ts'
@@ -74,6 +76,7 @@ export interface FirebaseServices {
   createSongRepository: (weddingId: string, logger?: ActivityLogger) => SongRepository
   createVenueRepository: (weddingId: string, logger?: ActivityLogger) => VenueRepository
   createActivityRepository: (weddingId: string, actor: () => ActivityActor) => ActivityRepository
+  createActivityCommentRepository: (weddingId: string, actor: () => ActivityActor) => ActivityCommentRepository
   createWeddingRepository: (email: string) => WeddingRepository
 }
 
@@ -98,6 +101,7 @@ export function createFirebaseServices(config: FirebaseWebConfig): FirebaseServi
     createSongRepository: (weddingId, logger) => createFirestoreSongRepository(db, weddingId, logger),
     createVenueRepository: (weddingId, logger) => createFirestoreVenueRepository(db, weddingId, logger),
     createActivityRepository: (weddingId, actor) => createFirestoreActivityRepository(db, weddingId, actor),
+    createActivityCommentRepository: (weddingId, actor) => createFirestoreActivityCommentRepository(db, weddingId, actor),
     createWeddingRepository: (email) => createFirestoreWeddingRepository(db, email),
   }
   return services

@@ -14,6 +14,8 @@ describe('firestore rules', () => {
     expect(rules).toContain('match /songs/{songId}')
     expect(rules).toContain('match /venues/{venueId}')
     expect(rules).toContain('match /activity/{eventId}')
+    expect(rules).toContain('match /activityComments/{commentId}')
+    expect(rules).toContain('validActivityComment')
     expect(rules).toContain('weddingDate')
     expect(rules).toContain('venueQuestions')
     expect(rules).toContain('validQuestions')

@@ -283,6 +283,29 @@ service cloud.firestore {
         && (data.details.artworkUrl == '' || data.details.artworkUrl.matches('https://.+'));
     }
 
+    function validActivityComment(data) {
+      return data.keys().hasOnly([
+          'eventId', 'text', 'actorEmail', 'actorName', 'actorRole', 'actorPhotoUrl', 'createdAt'
+        ])
+        && data.eventId is string
+        && data.eventId.size() > 0
+        && data.eventId.size() < 200
+        && data.text is string
+        && data.text.size() > 0
+        && data.text.size() <= 1000
+        && data.actorEmail is string
+        && data.actorEmail.size() > 0
+        && data.actorEmail.size() < 200
+        && data.actorName is string
+        && data.actorName.size() > 0
+        && data.actorName.size() < 200
+        && (data.actorRole == null || knownRole(data.actorRole))
+        && data.actorPhotoUrl is string
+        && data.actorPhotoUrl.size() < 1000
+        && (data.actorPhotoUrl == '' || data.actorPhotoUrl.matches('https://.+'))
+        && data.createdAt == request.time;
+    }
+
     match /weddings/{weddingId} {
       allow read: if signedIn() && myEmail() in resource.data.memberEmails;
 
@@ -355,6 +378,20 @@ service cloud.firestore {
           && (request.resource.data.actorEmail == myEmail() || request.resource.data.actorEmail == myEmail().lower());
         allow update: if false;
         allow delete: if isOwner(weddingId);
+      }
+
+      match /activityComments/{commentId} {
+        allow read: if canModerate(weddingId);
+        allow create: if canModerate(weddingId)
+          && validActivityComment(request.resource.data)
+          && (request.resource.data.actorEmail == myEmail() || request.resource.data.actorEmail == myEmail().lower());
+        allow update: if false;
+        allow delete: if canModerate(weddingId)
+          && (
+            isOwner(weddingId)
+            || resource.data.actorEmail == myEmail()
+            || resource.data.actorEmail == myEmail().lower()
+          );
       }
     }
   }

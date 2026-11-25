@@ -80,6 +80,9 @@ const ERROR_TEXT: Record<string, string> = {
   'create-failed': 'לא הצלחנו ליצור את החתונה. נסו לרענן.',
   'missing-email': 'לחשבון Google אין כתובת אימייל זמינה.',
   'storage-full': 'הדפדפן חסם את השמירה. פנו מקום או התחברו לענן.',
+  'comment-empty': 'כתבו תגובה לפני השליחה.',
+  'comment-length': 'התגובה ארוכה מדי.',
+  'comment-event': 'לא נמצא העדכון לתגובה.',
   unknown: 'משהו השתבש. נסו שוב.',
 }
 
