@@ -357,7 +357,7 @@ textarea { min-height: 88px; resize: vertical; }
 
 .guest-card { padding: 16px; }
 
-.guest-card-top, .member-list li {
+.guest-card-top {
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -384,6 +384,7 @@ textarea { min-height: 88px; resize: vertical; }
 .badge-maybe { background: var(--maybe-soft); color: var(--maybe); }
 .badge-assumed { background: var(--gold-soft); color: var(--gold); }
 .badge-side { background: var(--accent-soft); color: var(--accent); }
+.badge-role { background: var(--gold-soft); color: #7a5414; }
 
 .banner {
   background: var(--gold-soft);
@@ -637,7 +638,18 @@ textarea { min-height: 88px; resize: vertical; }
   border: 0;
 }
 
-.member-list li { padding: 8px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.member-list li {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.member-id { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.member-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.member-tags .badge { margin: 0; }
+.member-row .field, .member-row select { width: 100%; }
 
 .panel-field { margin-bottom: 14px; }
 

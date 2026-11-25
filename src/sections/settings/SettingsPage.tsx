@@ -144,16 +144,20 @@ export function SettingsPage() {
           </form>
         )}
         <ul className="member-list">
-          {members.map((member) => (
-            <li key={member.email}>
-              <div>
+          {members.map((member) => {
+            const roleName = roleLabel(assignedRole(wedding, member.email))
+            return (
+            <li key={member.email} className="member-row">
+              <div className="member-id">
                 <span className="ltr-inline" dir="ltr">
                   {member.email}
                 </span>
-                <span className={`badge ${member.role === 'owner' ? 'badge-side' : 'badge-pending'}`}>
-                  {member.role === 'owner' ? 'בעלים' : 'שותף'}
-                </span>
-                <span className="badge badge-maybe">{roleLabel(assignedRole(wedding, member.email))}</span>
+                <div className="member-tags">
+                  <span className={`badge ${member.role === 'owner' ? 'badge-side' : 'badge-pending'}`}>
+                    {member.role === 'owner' ? 'בעלים' : 'שותף'}
+                  </span>
+                  <span className="badge badge-role">{roleName}</span>
+                </div>
               </div>
               {isOwner && (
                 <label className="field">
@@ -189,7 +193,8 @@ export function SettingsPage() {
                 </button>
               )}
             </li>
-          ))}
+            )
+          })}
         </ul>
         {status && <p className="hint">{status}</p>}
         {error && (

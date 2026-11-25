@@ -19,6 +19,7 @@ export function HomePage() {
   const [songs, setSongs] = useState(0)
   const [venues, setVenues] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [commentsError, setCommentsError] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => app.activity.subscribe((page) => {
@@ -29,8 +30,8 @@ export function HomePage() {
 
   useEffect(() => app.activityComments.subscribe((next) => {
     setComments(next)
-    setError(null)
-  }, (failure) => setError(messageFrom(failure))), [app.activityComments])
+    setCommentsError(null)
+  }, () => setCommentsError('התגובות לא נטענו. החשבון מחובר לחתונה, אבל כללי Firebase עדיין לא מאפשרים תגובות.')), [app.activityComments])
 
   useEffect(() => app.guests.subscribe((next) => {
     const stats = summarizeGuests(next)
@@ -70,6 +71,7 @@ export function HomePage() {
         {countdown && <article className="stat-card stat-maybe"><p className="stat-label">החתונה</p><p className="stat-value countdown">{countdown}</p></article>}
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
+      {commentsError && <p className="form-error" role="alert">{commentsError}</p>}
       {events === null ? (
         <p className="hint">טוען את העדכונים…</p>
       ) : events.length === 0 ? (
@@ -159,7 +161,10 @@ function FeedComments({
       setExpanded(true)
     } catch (failure) {
       setDraft(text)
-      setError(messageFrom(failure))
+      const detail = messageFrom(failure)
+      setError(detail.includes('שותפים')
+        ? 'התגובה לא נשמרה. אתם מחוברים, אבל צריך לפרסם את כללי Firebase כדי שתגובות יעבדו.'
+        : detail)
     } finally {
       setBusy(false)
     }
