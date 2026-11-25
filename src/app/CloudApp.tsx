@@ -185,6 +185,10 @@ function WeddingSession({
   const actorRef = useRef<ActivityActor>({ email: user.email, name: user.displayName, role: assignedRole(wedding, user.email), photoUrl: user.photoUrl })
   actorRef.current = { email: user.email, name: user.displayName, role: assignedRole(wedding, user.email), photoUrl: user.photoUrl }
   const activity = useMemo(() => services.createActivityRepository(wedding.id, () => actorRef.current), [services, wedding.id])
+  const activityComments = useMemo(
+    () => services.createActivityCommentRepository(wedding.id, () => actorRef.current),
+    [services, wedding.id],
+  )
   const guests = useMemo(() => services.createGuestRepository(wedding.id, activity), [services, wedding.id, activity])
   const songs = useMemo(() => services.createSongRepository(wedding.id, activity), [services, wedding.id, activity])
   const venues = useMemo(() => services.createVenueRepository(wedding.id, activity), [services, wedding.id, activity])
@@ -195,6 +199,7 @@ function WeddingSession({
     songs,
     venues,
     activity,
+    activityComments,
     user,
     wedding,
     weddings,

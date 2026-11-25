@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createLocalActivityCommentRepository } from '../data/activityCommentRepository.ts'
 import { createLocalActivityRepository } from '../data/activityRepository.ts'
 import { createLocalGuestRepository, GUEST_STORAGE_KEY } from '../data/guestRepository.ts'
 import { createLocalSongRepository, SONG_STORAGE_KEY } from '../data/songRepository.ts'
@@ -19,6 +20,7 @@ const localActor: ActivityActor = { email: '', name: 'מכשיר זה', role: 'g
 export function LocalApp() {
   const storage = useMemo(() => browserStorage(), [])
   const activity = useMemo(() => createLocalActivityRepository(storage, () => localActor), [storage])
+  const activityComments = useMemo(() => createLocalActivityCommentRepository(storage, () => localActor), [storage])
   const guests = useMemo(() => createLocalGuestRepository(storage, GUEST_STORAGE_KEY, activity), [storage, activity])
   const songs = useMemo(() => createLocalSongRepository(storage, SONG_STORAGE_KEY, activity), [storage, activity])
   const venues = useMemo(() => createLocalVenueRepository(storage, VENUE_STORAGE_KEY, activity), [storage, activity])
@@ -37,6 +39,7 @@ export function LocalApp() {
       songs,
       venues,
       activity,
+      activityComments,
       user: null,
       wedding: null,
       weddings: [],
@@ -60,7 +63,7 @@ export function LocalApp() {
       onSetMemberRole: null,
       onRemoveMember: null,
     }),
-    [activity, guests, songs, venues, storage, weddingDate, venueQuestions],
+    [activity, activityComments, guests, songs, venues, storage, weddingDate, venueQuestions],
   )
 
   return (
