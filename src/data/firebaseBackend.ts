@@ -49,6 +49,7 @@ import { normalizeGuestCategories, readGuestCategories } from '../domain/guestCa
 import type { GuestCategory } from '../domain/guestCategories.ts'
 import { normalizeFamilyPlaces, readFamilyPlaces } from '../domain/geo.ts'
 import type { FamilyPlace } from '../domain/geo.ts'
+import { readPalette, type PaletteChoice } from '../domain/palette.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
 import { emailVariants, normalizeWeddingDate, normalizeWeddingName, type Wedding } from '../domain/members.ts'
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
@@ -67,6 +68,7 @@ export interface WeddingRepository {
   ): Promise<void>
   updateCategories(id: string, categories: readonly GuestCategory[]): Promise<void>
   updatePlaces(id: string, places: readonly FamilyPlace[]): Promise<void>
+  updatePalette(id: string, palette: PaletteChoice | null): Promise<void>
   updateMembers(
     id: string,
     memberEmails: readonly string[],
@@ -213,6 +215,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         venueQuestions: [],
         guestCategories: [],
         familyPlaces: [],
+        palette: null,
         createdAt: timestamp,
         updatedAt: timestamp,
       }
@@ -260,6 +263,12 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
     async updatePlaces(id, places) {
       await updateDoc(doc(weddings, id), {
         familyPlaces: normalizeFamilyPlaces(places),
+        updatedAt: new Date().toISOString(),
+      })
+    },
+    async updatePalette(id, palette) {
+      await updateDoc(doc(weddings, id), {
+        palette: palette ? { green: palette.green, pink: palette.pink } : null,
         updatedAt: new Date().toISOString(),
       })
     },
@@ -468,6 +477,7 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     venueQuestions: readVenueQuestions(data.venueQuestions),
     guestCategories: readGuestCategories(data.guestCategories),
     familyPlaces: readFamilyPlaces(data.familyPlaces),
+    palette: readPalette(data.palette),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
   }

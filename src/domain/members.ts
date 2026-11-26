@@ -1,6 +1,7 @@
 import { DomainError } from './errors.ts'
 import type { WeddingRoleId } from './roles.ts'
 import type { FamilyPlace } from './geo.ts'
+import type { PaletteChoice } from './palette.ts'
 import type { GuestCategory } from './guestCategories.ts'
 import type { VenueQuestion } from './venueQuestions.ts'
 
@@ -14,6 +15,7 @@ export interface Wedding {
   venueQuestions: VenueQuestion[]
   guestCategories: GuestCategory[]
   familyPlaces: FamilyPlace[]
+  palette: PaletteChoice | null
   createdAt: string
   updatedAt: string
 }

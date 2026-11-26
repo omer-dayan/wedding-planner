@@ -370,6 +370,11 @@ function VenueCard({
             {venue.city && <p className="venue-city">{venue.city}</p>}
             <VenueDistances venue={venue} places={places} />
           </button>
+          {manage && (
+            <button type="button" className="icon-btn" aria-label={venue.lat == null ? 'סימון מיקום במפה' : 'עדכון מיקום במפה'} onClick={onPlace}>
+              <PinIcon filled={venue.lat != null} />
+            </button>
+          )}
           <button type="button" className="icon-btn" aria-label={`טיקטוק של ${venue.name}`} onClick={() => openTikTokVideos(venue.name, venue.city)}>
             <TikTokIcon />
           </button>
@@ -380,11 +385,6 @@ function VenueCard({
             </OverflowMenu>
           )}
         </div>
-        {manage && (
-          <button type="button" className="btn btn-ghost btn-small" onClick={onPlace}>
-            {venue.lat == null ? 'סימון מיקום במפה' : 'עדכון מיקום במפה'}
-          </button>
-        )}
         <div className="status-wrap">
           <button
             type="button"
@@ -584,6 +584,15 @@ function formatVisit(value: string): string {
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
+}
+
+function PinIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="12" cy="11" r="2.1" fill={filled ? '#fffdf8' : 'currentColor'} />
+    </svg>
+  )
 }
 
 function MapIcon() {

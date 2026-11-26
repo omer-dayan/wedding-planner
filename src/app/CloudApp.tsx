@@ -211,9 +211,11 @@ function WeddingSession({
     venueQuestions: wedding.venueQuestions,
     guestCategories: wedding.guestCategories,
     familyPlaces: wedding.familyPlaces,
+    palette: wedding.palette,
     onSetWeddingDate: canEditDate ? (date) => weddingsRepo.updateDate(wedding.id, date) : null,
     onSetGuestCategories: canEditDate ? (categories) => weddingsRepo.updateCategories(wedding.id, categories) : null,
     onSetFamilyPlaces: canEditDate ? (places) => weddingsRepo.updatePlaces(wedding.id, places) : null,
+    onSetPalette: canEditDate ? (palette) => weddingsRepo.updatePalette(wedding.id, palette) : null,
     onSetVenueQuestions: canEditDate
       ? (questions) => weddingsRepo.updateQuestions(wedding.id, questions, { logger: activity, inputs: [venueQuestionsInput(questions)] })
       : null,

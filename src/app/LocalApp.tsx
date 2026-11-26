@@ -8,6 +8,7 @@ import { browserStorage } from '../data/storage.ts'
 import type { ActivityActor } from '../domain/activity.ts'
 import { normalizeWeddingDate } from '../domain/members.ts'
 import { normalizeFamilyPlaces, readFamilyPlaces, type FamilyPlace } from '../domain/geo.ts'
+import { readPalette, type PaletteChoice } from '../domain/palette.ts'
 import { normalizeGuestCategories, readGuestCategories, type GuestCategory } from '../domain/guestCategories.ts'
 import { normalizeVenueQuestions, readVenueQuestions, type VenueQuestion } from '../domain/venueQuestions.ts'
 import { venueQuestionsInput } from '../domain/activity.ts'
@@ -18,6 +19,7 @@ const DATE_KEY = 'wedding-planner.weddingDate'
 const QUESTIONS_KEY = 'wedding-planner.venueQuestions'
 const CATEGORIES_KEY = 'wedding-planner.guestCategories'
 const PLACES_KEY = 'wedding-planner.familyPlaces'
+const PALETTE_KEY = 'wedding-planner.palette'
 
 const localActor: ActivityActor = { email: '', name: 'מכשיר זה', role: 'groom', photoUrl: '' }
 
@@ -43,6 +45,13 @@ export function LocalApp() {
       return []
     }
   })
+  const [palette, setPalette] = useState<PaletteChoice | null>(() => {
+    try {
+      return readPalette(JSON.parse(storage.getItem(PALETTE_KEY) || 'null'))
+    } catch {
+      return null
+    }
+  })
   const [familyPlaces, setFamilyPlaces] = useState<FamilyPlace[]>(() => {
     try {
       return readFamilyPlaces(JSON.parse(storage.getItem(PLACES_KEY) || '[]'))
@@ -65,6 +74,7 @@ export function LocalApp() {
       venueQuestions,
       guestCategories,
       familyPlaces,
+      palette,
       onSetWeddingDate: async (date) => {
         const next = normalizeWeddingDate(date)
         storage.setItem(DATE_KEY, next)
@@ -86,6 +96,12 @@ export function LocalApp() {
         storage.setItem(PLACES_KEY, JSON.stringify(next))
         setFamilyPlaces(next)
       },
+      onSetPalette: async (next) => {
+        const palette = readPalette(next)
+        if (palette) storage.setItem(PALETTE_KEY, JSON.stringify(palette))
+        else storage.removeItem(PALETTE_KEY)
+        setPalette(palette)
+      },
       onSignOut: null,
       onSelectWedding: null,
       onRenameWedding: null,
@@ -93,7 +109,7 @@ export function LocalApp() {
       onSetMemberRole: null,
       onRemoveMember: null,
     }),
-    [activity, activityComments, guests, songs, venues, storage, weddingDate, venueQuestions, guestCategories, familyPlaces],
+    [activity, activityComments, guests, songs, venues, storage, weddingDate, venueQuestions, guestCategories, familyPlaces, palette],
   )
 
   return (

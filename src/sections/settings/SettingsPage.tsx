@@ -16,6 +16,7 @@ import {
   type VenueQuestionType,
 } from '../../domain/venueQuestions.ts'
 import { normalizeFamilyPlaces, type FamilyPlace } from '../../domain/geo.ts'
+import { DEFAULT_PALETTE, derivePalette, type PaletteChoice } from '../../domain/palette.ts'
 import { geocodeInIsrael } from '../../data/geocode.ts'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
@@ -45,6 +46,7 @@ export function SettingsPage() {
           </p>
         </div>
         <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
+        <PaletteEditor palette={app.palette} onSave={app.onSetPalette} />
         <FamilyPlacesEditor places={app.familyPlaces} onSave={app.onSetFamilyPlaces} />
         <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
         <BuildStamp />
@@ -213,12 +215,67 @@ export function SettingsPage() {
       <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
       {isCoupleOrOwner(wedding, app.user.email) && (
         <>
+          <PaletteEditor palette={app.palette} onSave={app.onSetPalette} />
           <FamilyPlacesEditor places={app.familyPlaces} onSave={app.onSetFamilyPlaces} />
           <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
         </>
       )}
       <BuildStamp />
     </section>
+  )
+}
+
+function PaletteEditor({
+  palette,
+  onSave,
+}: {
+  palette: PaletteChoice | null
+  onSave: ((palette: PaletteChoice | null) => Promise<void>) | null
+}) {
+  const choice = palette ?? DEFAULT_PALETTE
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const preview = derivePalette(choice)
+
+  async function save(next: PaletteChoice | null) {
+    if (!onSave) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onSave(next)
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="panel stack-form" onSubmit={(event) => event.preventDefault()}>
+      <h2>פלטת צבעים</h2>
+      <p>בחרו ירוק וורוד. שאר הגוונים באפליקציה נגזרים מהם.</p>
+      <div className="palette-row">
+        <label className="field">
+          <span>ירוק</span>
+          <input type="color" value={choice.green} disabled={busy || !onSave} onChange={(event) => void save({ ...choice, green: event.target.value })} />
+        </label>
+        <label className="field">
+          <span>ורוד</span>
+          <input type="color" value={choice.pink} disabled={busy || !onSave} onChange={(event) => void save({ ...choice, pink: event.target.value })} />
+        </label>
+      </div>
+      <div className="palette-swatches" aria-hidden="true">
+        {['--accent', '--accent-soft', '--gold', '--blush', '--ink', '--bg'].map((key) => (
+          <span key={key} style={{ background: preview[key] }} />
+        ))}
+      </div>
+      {palette && (
+        <button type="button" className="btn btn-ghost" disabled={busy || !onSave} onClick={() => void save(null)}>
+          חזרה לצבעים המקוריים
+        </button>
+      )}
+      {error && <p className="form-error" role="alert">{error}</p>}
+    </form>
   )
 }
 

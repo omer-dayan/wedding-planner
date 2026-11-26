@@ -5,6 +5,7 @@ import { unreadCount } from '../domain/activity.ts'
 import { isCoupleOrOwner } from '../domain/roles.ts'
 import { sections } from '../sections/registry.tsx'
 import { readLastSeen } from '../sections/home/seen.ts'
+import { applyPalette } from '../domain/palette.ts'
 import { Flower } from '../ui/Flower.tsx'
 
 const TAB_IDS = ['home', 'guests', 'music', 'venues'] as const
@@ -16,6 +17,10 @@ export function AppShell() {
   const tabs = sections.filter((item) => TAB_IDS.includes(item.id as (typeof TAB_IDS)[number]) && (item.id !== 'home' || canSeeFeed))
   const current = sections.find((item) => item.id === (section === 'home' && !canSeeFeed ? 'guests' : section)) ?? sections[0]
   const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    applyPalette(app.palette)
+  }, [app.palette])
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -74,17 +79,17 @@ export function AppShell() {
         </nav>
       </aside>
       <main className="content" id="content">
-        <nav className="section-tabs" aria-label="מעבר בין חלקי האפליקציה" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-          {tabs.map((item) => (
-            <a key={item.id} href={`#/${item.id}`} aria-current={item.id === current.id ? 'page' : undefined}>
-              <TabIcon id={item.id} />
-              <span>{item.label}</span>
-              {item.id === 'home' && unread > 0 && <span className="tab-badge">{unread > 9 ? '9+' : unread}</span>}
-            </a>
-          ))}
-        </nav>
         <Section />
       </main>
+      <nav className="section-tabs" aria-label="מעבר בין חלקי האפליקציה" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+        {tabs.map((item) => (
+          <a key={item.id} href={`#/${item.id}`} aria-current={item.id === current.id ? 'page' : undefined}>
+            <TabIcon id={item.id} />
+            <span>{item.label}</span>
+            {item.id === 'home' && unread > 0 && <span className="tab-badge">{unread > 9 ? '9+' : unread}</span>}
+          </a>
+        ))}
+      </nav>
     </div>
   )
 }
