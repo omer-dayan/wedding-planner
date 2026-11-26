@@ -17,6 +17,7 @@ import {
   type VenueStatusId,
 } from '../../domain/venues.ts'
 import { formatPortionPrice, portionQuote } from '../../domain/venuePrice.ts'
+import { summarizeGuests } from '../../domain/stats.ts'
 import { mergeAnswers, type VenueQuestion } from '../../domain/venueQuestions.ts'
 import { compressImageFile } from '../../ui/compressImage.ts'
 import { Fab } from '../../ui/Fab.tsx'
@@ -34,7 +35,15 @@ export function VenuesPage() {
   const [error, setError] = useState<string | null>(null)
   const [picking, setPicking] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Venue | null>(null)
+  const [guestCount, setGuestCount] = useState(0)
   const manage = canManageVenues(app.wedding, app.user?.email ?? null)
+
+  useEffect(() => {
+    return app.guests.subscribe((next) => {
+      const stats = summarizeGuests(next)
+      setGuestCount(stats.overall.attending + stats.overall.pending + stats.overall.maybe)
+    })
+  }, [app.guests])
 
   useEffect(() => {
     return app.venues.subscribe(
@@ -130,6 +139,7 @@ export function VenuesPage() {
                   key={venue.id}
                   venue={venue}
                   questions={app.venueQuestions}
+                  guestCount={guestCount}
                   manage={manage}
                   picking={picking === venue.id}
                   onToggleStatus={() => setPicking((current) => current === venue.id ? null : venue.id)}
@@ -176,6 +186,7 @@ export function VenuesPage() {
 function VenueCard({
   venue,
   questions,
+  guestCount,
   manage,
   picking,
   onToggleStatus,
@@ -186,6 +197,7 @@ function VenueCard({
 }: {
   venue: Venue
   questions: readonly VenueQuestion[]
+  guestCount: number
   manage: boolean
   picking: boolean
   onToggleStatus: () => void
@@ -198,7 +210,7 @@ function VenueCard({
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const quote = portionQuote(questions, venue.answers)
+  const quote = portionQuote(questions, venue.answers, guestCount)
 
   function toggle() {
     setOpen((current) => {
@@ -295,8 +307,9 @@ function VenueCard({
           </div>
         ) : (
           <button type="button" className="venue-summary" onClick={toggle}>
-            <strong>{quote ? formatPortionPrice(quote.amount) : 'אין מחיר למנה'}</strong>
-            {quote?.adjusted && <span>אחרי כל החישובים</span>}
+            <strong>{quote ? formatPortionPrice(quote.amount) : 'אין מחיר לראש'}</strong>
+            {quote?.missingGuests && <span>חסרה כמות אורחים לחלוקת מס האולם</span>}
+            {quote?.adjusted && !quote.missingGuests && <span>מחיר לראש אחרי כל החישובים</span>}
           </button>
         )}
       </div>

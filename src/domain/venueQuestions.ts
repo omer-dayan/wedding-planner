@@ -11,13 +11,15 @@ export const VENUE_QUESTION_TYPE_LABELS: Record<VenueQuestionType, string> = {
 }
 
 /** How a number question changes the per-portion price. Missing means infer from the label. */
-export const PRICE_PARTS = ['base', 'add', 'percent', 'skip'] as const
+export const PRICE_PARTS = ['base', 'add', 'split', 'percent', 'guests', 'skip'] as const
 export type PricePart = (typeof PRICE_PARTS)[number]
 
 export const PRICE_PART_LABELS: Record<PricePart, string> = {
-  base: 'מחיר בסיס למנה',
-  add: 'תוספת למנה',
+  base: 'מחיר בסיס לראש',
+  add: 'תוספת לראש',
+  split: 'סכום קבוע לחלק לאורחים',
   percent: 'אחוז על המחיר',
+  guests: 'כמות אורחים',
   skip: 'לא נכנס לחישוב',
 }
 
@@ -45,6 +47,8 @@ export function isPricePart(value: unknown): value is PricePart {
 export function inferredPricePart(label: string): PricePart | null {
   const text = label.replace(/[״"]/g, '').replace(/\s+/g, '')
   if (/אחוז|מעמ|שירות|%|ויאט/.test(text)) return 'percent'
+  if (/מסאולם|אגרה|אגרת/.test(text)) return 'split'
+  if (/אורח|מוזמן|מינימום/.test(text) && !text.includes('מנה')) return 'guests'
   if (/תוספת|שדרוג/.test(text)) return 'add'
   if (text.includes('מנה')) return 'base'
   return null
@@ -53,8 +57,11 @@ export function inferredPricePart(label: string): PricePart | null {
 export function pricePartOf(question: VenueQuestion): PricePart | null {
   if (question.type !== 'number') return null
   if (question.pricePart === 'skip') return null
+  const inferred = inferredPricePart(question.label)
+  // Hall tax was often saved as a flat add-on before it could be split across guests.
+  if (inferred === 'split' && (!question.pricePart || question.pricePart === 'add')) return 'split'
   if (question.pricePart) return question.pricePart
-  return inferredPricePart(question.label)
+  return inferred
 }
 
 export function createVenueQuestion(label = '', type: VenueQuestionType = 'text'): VenueQuestion {
