@@ -4,6 +4,7 @@ import { createLocalActivityRepository } from '../data/activityRepository.ts'
 import { createLocalGuestRepository, GUEST_STORAGE_KEY } from '../data/guestRepository.ts'
 import { createLocalSongRepository, SONG_STORAGE_KEY } from '../data/songRepository.ts'
 import { createLocalVenueRepository, VENUE_STORAGE_KEY } from '../data/venueRepository.ts'
+import { createLocalExpenseRepository, EXPENSE_STORAGE_KEY } from '../data/expenseRepository.ts'
 import { browserStorage } from '../data/storage.ts'
 import type { ActivityActor } from '../domain/activity.ts'
 import { normalizeWeddingDate } from '../domain/members.ts'
@@ -30,6 +31,7 @@ export function LocalApp() {
   const guests = useMemo(() => createLocalGuestRepository(storage, GUEST_STORAGE_KEY, activity), [storage, activity])
   const songs = useMemo(() => createLocalSongRepository(storage, SONG_STORAGE_KEY, activity), [storage, activity])
   const venues = useMemo(() => createLocalVenueRepository(storage, VENUE_STORAGE_KEY, activity), [storage, activity])
+  const expenses = useMemo(() => createLocalExpenseRepository(storage, EXPENSE_STORAGE_KEY, activity), [storage, activity])
   const [weddingDate, setWeddingDate] = useState(() => storage.getItem(DATE_KEY) ?? '')
   const [venueQuestions, setVenueQuestions] = useState<VenueQuestion[]>(() => {
     try {
@@ -65,6 +67,7 @@ export function LocalApp() {
       guests,
       songs,
       venues,
+      expenses,
       activity,
       activityComments,
       user: null,
@@ -109,7 +112,7 @@ export function LocalApp() {
       onSetMemberRole: null,
       onRemoveMember: null,
     }),
-    [activity, activityComments, guests, songs, venues, storage, weddingDate, venueQuestions, guestCategories, familyPlaces, palette],
+    [activity, activityComments, guests, songs, venues, expenses, storage, weddingDate, venueQuestions, guestCategories, familyPlaces, palette],
   )
 
   return (

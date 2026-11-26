@@ -1095,6 +1095,21 @@ textarea { min-height: 88px; resize: vertical; }
 .place-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .place-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
 .venue-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 14px; }
+.expense-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.expense-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+.expense-copy { min-width: 0; }
+.expense-copy h2 { font-size: 1.15rem; }
+.expense-copy p { color: var(--muted); font-size: 0.9rem; }
+.expense-amount { font-size: 1.15rem; white-space: nowrap; }
 .venue-card { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); overflow: visible; }
 .venue-row { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: stretch; }
 .venue-photo {

@@ -8,7 +8,7 @@ import { readLastSeen } from '../sections/home/seen.ts'
 import { applyPalette } from '../domain/palette.ts'
 import { Flower } from '../ui/Flower.tsx'
 
-const TAB_IDS = ['home', 'guests', 'music', 'venues'] as const
+const TAB_IDS = ['home', 'guests', 'music', 'venues', 'expenses'] as const
 
 export function AppShell() {
   const app = useAppServices()
@@ -134,5 +134,6 @@ function TabIcon({ id }: { id: string }) {
   if (id === 'home') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" fill="currentColor" /></svg>
   if (id === 'music') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5a2.5 2.5 0 1 1-2-2.45V6.2l10-2v9.35a2.5 2.5 0 1 1-2-2.45V6.8l-6 1.2v9.5z" fill="currentColor" /></svg>
   if (id === 'venues') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11h-5v-6H9v6z" fill="currentColor" /></svg>
+  if (id === 'expenses') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm1 4h10v2H7zm0 4h6v2H7zm8 1.2 1.4 1.4 2.6-2.6 1.2 1.2-3.8 3.8-2.6-2.6z" fill="currentColor" /></svg>
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm8 1a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5zM3 19c0-2.5 2.2-4 5-4s5 1.5 5 4v1H3zm11 .5c.2-1.6 1.4-3 3.2-3.5 1.6.3 2.8 1.5 2.8 3.5V20h-6z" fill="currentColor" /></svg>
 }

@@ -5,6 +5,7 @@ import type { ActivityRepository } from '../data/activityLog.ts'
 import type { GuestRepository } from '../data/guestRepository.ts'
 import type { SongRepository } from '../data/songRepository.ts'
 import type { VenueRepository } from '../data/venueRepository.ts'
+import type { ExpenseRepository } from '../data/expenseRepository.ts'
 import type { Wedding } from '../domain/members.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
 import type { FamilyPlace } from '../domain/geo.ts'
@@ -23,6 +24,7 @@ export interface AppServices {
   guests: GuestRepository
   songs: SongRepository
   venues: VenueRepository
+  expenses: ExpenseRepository
   activity: ActivityRepository
   activityComments: ActivityCommentRepository
   user: SessionUser | null

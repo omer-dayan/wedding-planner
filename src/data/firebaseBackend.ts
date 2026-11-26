@@ -35,6 +35,8 @@ import type { GuestRepository } from './guestRepository.ts'
 import type { SongRepository } from './songRepository.ts'
 import { createFirestoreSongRepository } from './firestoreSongs.ts'
 import { createFirestoreVenueRepository } from './firestoreVenues.ts'
+import { createFirestoreExpenseRepository } from './firestoreExpenses.ts'
+import type { ExpenseRepository } from './expenseRepository.ts'
 import type { VenueRepository } from './venueRepository.ts'
 import { createFirestoreActivityRepository } from './firestoreActivity.ts'
 import { createFirestoreActivityCommentRepository } from './firestoreActivityComments.ts'
@@ -83,6 +85,7 @@ export interface FirebaseServices {
   createGuestRepository: (weddingId: string, logger?: ActivityLogger) => GuestRepository
   createSongRepository: (weddingId: string, logger?: ActivityLogger) => SongRepository
   createVenueRepository: (weddingId: string, logger?: ActivityLogger) => VenueRepository
+  createExpenseRepository: (weddingId: string, logger?: ActivityLogger) => ExpenseRepository
   createActivityRepository: (weddingId: string, actor: () => ActivityActor) => ActivityRepository
   createActivityCommentRepository: (weddingId: string, actor: () => ActivityActor) => ActivityCommentRepository
   createWeddingRepository: (email: string) => WeddingRepository
@@ -108,6 +111,7 @@ export function createFirebaseServices(config: FirebaseWebConfig): FirebaseServi
     createGuestRepository: (weddingId, logger) => createFirestoreGuestRepository(db, weddingId, logger),
     createSongRepository: (weddingId, logger) => createFirestoreSongRepository(db, weddingId, logger),
     createVenueRepository: (weddingId, logger) => createFirestoreVenueRepository(db, weddingId, logger),
+    createExpenseRepository: (weddingId, logger) => createFirestoreExpenseRepository(db, weddingId, logger),
     createActivityRepository: (weddingId, actor) => createFirestoreActivityRepository(db, weddingId, actor),
     createActivityCommentRepository: (weddingId, actor) => createFirestoreActivityCommentRepository(db, weddingId, actor),
     createWeddingRepository: (email) => createFirestoreWeddingRepository(db, email),

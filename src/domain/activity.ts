@@ -7,6 +7,7 @@ import { venueStatusLabel, type VenueStatusId, isVenueStatus } from './venues.ts
 import type { Guest } from './types.ts'
 import type { Song } from './songs.ts'
 import type { Venue } from './venues.ts'
+import { formatShekels, type Expense } from './expenses.ts'
 import type { VenueQuestion } from './venueQuestions.ts'
 
 export const ACTIVITY_TYPES = [
@@ -24,10 +25,12 @@ export const ACTIVITY_TYPES = [
   'venue_answers',
   'member_added',
   'role_changed',
+  'expense_added',
+  'expense_deleted',
 ] as const
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number]
-export type ActivityEntity = 'guest' | 'song' | 'venue' | 'member' | 'rsvp'
+export type ActivityEntity = 'guest' | 'song' | 'venue' | 'member' | 'rsvp' | 'expense'
 
 export interface ActivityDetails {
   from: string
@@ -135,6 +138,10 @@ export function describeActivity(event: Pick<ActivityEvent, 'type' | 'entityName
       return `${who} ${verb('הוסיף', 'הוסיפה', feminine)} את ${name} כשותף`
     case 'role_changed':
       return `${who} ${verb('שינה', 'שינתה', feminine)} את התפקיד של ${name} ל${roleText(event.details.to)}`
+    case 'expense_added':
+      return `${who} ${verb('הוסיף', 'הוסיפה', feminine)} הוצאה: ${name}${event.details.to ? ` (${event.details.to})` : ''}`
+    case 'expense_deleted':
+      return `${who} ${verb('מחק', 'מחקה', feminine)} את ההוצאה ${name}`
   }
 }
 
@@ -214,6 +221,25 @@ export function songAddedInput(song: Song): ActivityInput {
     entityId: song.id,
     entityName: song.artist ? `${song.title} · ${song.artist}` : song.title,
     details: { artworkUrl: song.artworkUrl },
+  }
+}
+
+export function expenseAddedInput(expense: Pick<Expense, 'id' | 'title' | 'amount'>): ActivityInput {
+  return {
+    type: 'expense_added',
+    entity: 'expense',
+    entityId: expense.id,
+    entityName: expense.title,
+    details: { to: formatShekels(expense.amount) },
+  }
+}
+
+export function expenseDeletedInput(expense: Pick<Expense, 'id' | 'title'>): ActivityInput {
+  return {
+    type: 'expense_deleted',
+    entity: 'expense',
+    entityId: expense.id,
+    entityName: expense.title,
   }
 }
 

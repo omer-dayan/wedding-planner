@@ -196,12 +196,14 @@ function WeddingSession({
   const guests = useMemo(() => services.createGuestRepository(wedding.id, activity), [services, wedding.id, activity])
   const songs = useMemo(() => services.createSongRepository(wedding.id, activity), [services, wedding.id, activity])
   const venues = useMemo(() => services.createVenueRepository(wedding.id, activity), [services, wedding.id, activity])
+  const expenses = useMemo(() => services.createExpenseRepository(wedding.id, activity), [services, wedding.id, activity])
   const canEditDate = isCoupleOrOwner(wedding, user.email)
   const value: AppServices = {
     mode: 'cloud',
     guests,
     songs,
     venues,
+    expenses,
     activity,
     activityComments,
     user,
