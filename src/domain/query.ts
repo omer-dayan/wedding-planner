@@ -51,6 +51,18 @@ export function queryGuests(
   })
 }
 
+/** People in a category and its children. Side, search and status apply; the category filter does not. */
+export function categoryHeadcount(
+  guests: readonly Guest[],
+  query: GuestQuery,
+  categories: readonly GuestCategory[],
+  categoryId: string,
+): number {
+  const ids = new Set(subtreeIds(categories, categoryId))
+  return queryGuests(guests, { ...query, category: 'all' }, categories)
+    .reduce((sum, guest) => (ids.has(guest.categoryId) ? sum + guest.partySize : sum), 0)
+}
+
 export function groupOptions(guests: readonly Guest[]): string[] {
   const groups = new Set<string>()
   for (const guest of guests) {

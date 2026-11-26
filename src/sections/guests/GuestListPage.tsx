@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { guestsToAppCsv } from '../../domain/csv.ts'
-import { ancestorChain, childrenOf, legacyCategory, pathLabel, subtreeIds } from '../../domain/guestCategories.ts'
+import { ancestorChain, childrenOf, legacyCategory, pathLabel } from '../../domain/guestCategories.ts'
 import { CATEGORY_LABELS, RSVP_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
 import { assignedRole, canEditGuest, isCoupleOrOwner, placementForRole } from '../../domain/roles.ts'
-import { EMPTY_QUERY, queryGuests } from '../../domain/query.ts'
+import { EMPTY_QUERY, categoryHeadcount, queryGuests } from '../../domain/query.ts'
 import type { GuestQuery } from '../../domain/query.ts'
 import { RSVP_STATUSES } from '../../domain/types.ts'
 import type { Guest, GuestDraft } from '../../domain/types.ts'
@@ -158,22 +158,27 @@ export function GuestListPage() {
               ))}
             </div>
             <div className="category-filters">
-              {categoryLevels.map((level, index) => (
-                <div key={level.map((category) => category.id).join('-') || 'roots'} className="chip-row" role="tablist" aria-label={index === 0 ? 'סינון לפי קטגוריה' : 'תת-קטגוריות'}>
-                  {index === 0 && (
-                    <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
-                  )}
-                  {level.map((category) => {
-                    const selected = query.category === category.id || categoryTrail.some((item) => item.id === category.id)
-                    const people = (guests ?? []).filter((guest) => subtreeIds(app.guestCategories, category.id).includes(guest.categoryId)).reduce((sum, guest) => sum + guest.partySize, 0)
-                    return (
-                      <button key={category.id} type="button" className={selected ? 'chip chip-on' : 'chip'} aria-pressed={selected} onClick={() => setQuery({ ...query, category: category.id })}>
-                        {category.label} {people}
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
+              {categoryLevels.map((level, index) => {
+                const chips = level.flatMap((category) => {
+                  const people = categoryHeadcount(guests ?? [], query, app.guestCategories, category.id)
+                  if (people === 0) return []
+                  const selected = query.category === category.id || categoryTrail.some((item) => item.id === category.id)
+                  return [(
+                    <button key={category.id} type="button" className={selected ? 'chip chip-on' : 'chip'} aria-pressed={selected} onClick={() => setQuery({ ...query, category: category.id })}>
+                      {category.label} {people}
+                    </button>
+                  )]
+                })
+                if (chips.length === 0 && index > 0) return null
+                return (
+                  <div key={level.map((category) => category.id).join('-') || 'roots'} className="chip-row" role="tablist" aria-label={index === 0 ? 'סינון לפי קטגוריה' : 'תת-קטגוריות'}>
+                    {index === 0 && (
+                      <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
+                    )}
+                    {chips}
+                  </div>
+                )
+              })}
             </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
               <button type="button" className={query.rsvp === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.rsvp === 'all'} onClick={() => setQuery({ ...query, rsvp: 'all' })}>הכל</button>
