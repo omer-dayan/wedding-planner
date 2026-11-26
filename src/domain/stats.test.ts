@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeGuest } from './makeGuest.ts'
-import { sideSlices, summarizeGuests } from './stats.ts'
+import { pieSlices, sideSlices, summarizeGuests } from './stats.ts'
 
 describe('summarizeGuests', () => {
   it('sums people, not rows, and splits the totals by side', () => {
@@ -43,5 +43,18 @@ describe('summarizeGuests', () => {
       ],
     })
     expect(slices[1].people).toBe(3)
+  })
+
+  it('gives one side similar pie colors and the other side a different family', () => {
+    const slices = pieSlices([
+      makeGuest({ side: 'groom', partySize: 2, category: 'family', group: 'משפחה' }),
+      makeGuest({ side: 'groom', partySize: 1, category: 'family', group: 'משפחה גרעינית' }),
+      makeGuest({ side: 'bride', partySize: 3, category: 'friends', group: 'חברים' }),
+    ])
+    expect(slices.map((slice) => slice.label)).toEqual(['משפחה גרעינית', 'משפחה', 'חברים'])
+    expect(slices[0].color.startsWith('hsl(152')).toBe(true)
+    expect(slices[1].color.startsWith('hsl(152')).toBe(true)
+    expect(slices[0].color).not.toBe(slices[1].color)
+    expect(slices[2].color.startsWith('hsl(12')).toBe(true)
   })
 })

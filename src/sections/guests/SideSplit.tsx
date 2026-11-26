@@ -1,47 +1,61 @@
 import type { GuestCategory } from '../../domain/guestCategories.ts'
 import { sideLabel } from '../../domain/labels.ts'
-import { sideSlices } from '../../domain/stats.ts'
+import { pieSlices } from '../../domain/stats.ts'
 import type { Guest } from '../../domain/types.ts'
 
 export function SideSplit({ guests, categories = [] }: { guests: readonly Guest[]; categories?: readonly GuestCategory[] }) {
-  const slices = sideSlices(guests, categories)
+  const slices = pieSlices(guests, categories)
   const total = slices.reduce((sum, slice) => sum + slice.people, 0)
   if (total === 0) return null
-  const groom = slices[0]
-  const bride = slices[1]
-  const groomShare = Math.round((groom.people / total) * 100)
-  const brideShare = 100 - groomShare
+  const radius = 15.9
+  const circumference = 2 * Math.PI * radius
+  let offset = 0
+  const groomPeople = slices.filter((slice) => slice.side === 'groom').reduce((sum, slice) => sum + slice.people, 0)
+  const bridePeople = total - groomPeople
 
   return (
-    <section className="side-panel" aria-label="פילוח חתן וכלה">
+    <section className="side-panel side-pie-panel" aria-label="פילוח חתן וכלה">
       <h2>חתן וכלה</h2>
-      <div
-        className="side-bar"
-        role="img"
-        aria-label={`חתן ${groom.people} אנשים, כלה ${bride.people} אנשים`}
-      >
-        {groom.people > 0 && <span className="side-bar-groom" style={{ width: `${groomShare}%` }} />}
-        {bride.people > 0 && <span className="side-bar-bride" style={{ width: `${brideShare}%` }} />}
-      </div>
-      <div className="side-columns">
-        {[groom, bride].map((slice, index) => (
-          <div key={slice.side} className="side-col">
-            <h3>
-              <span className={index === 0 ? 'swatch swatch-groom' : 'swatch swatch-bride'} aria-hidden="true" />
-              {sideLabel(slice.side)}
-              <strong>{slice.people.toLocaleString('he-IL')}</strong>
-              <span className="side-share">{index === 0 ? groomShare : brideShare}%</span>
-            </h3>
-            <ul>
-              {slice.groups.map((group) => (
-                <li key={group.label}>
-                  <span>{group.label}</span>
-                  <strong>{group.people.toLocaleString('he-IL')}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <div className="side-pie-layout">
+        <svg className="side-pie" viewBox="0 0 42 42" role="img" aria-label={slices.map((slice) => `${sideLabel(slice.side)} ${slice.label} ${slice.people}`).join(', ')}>
+          {slices.map((slice) => {
+            const length = (slice.people / total) * circumference
+            const dash = `${length} ${circumference - length}`
+            const element = (
+              <circle
+                key={slice.key}
+                r={radius}
+                cx="21"
+                cy="21"
+                fill="transparent"
+                stroke={slice.color}
+                strokeWidth="10"
+                strokeDasharray={dash}
+                strokeDashoffset={-offset}
+              />
+            )
+            offset += length
+            return element
+          })}
+        </svg>
+        <ul className="side-pie-legend">
+          <li className="side-pie-total">
+            <span className="swatch swatch-groom" aria-hidden="true" />
+            {sideLabel('groom')}
+            <strong>{Math.round((groomPeople / total) * 100)}%</strong>
+          </li>
+          <li className="side-pie-total">
+            <span className="swatch swatch-bride" aria-hidden="true" />
+            {sideLabel('bride')}
+            <strong>{Math.round((bridePeople / total) * 100)}%</strong>
+          </li>
+          {slices.map((slice) => (
+            <li key={slice.key}>
+              <span className="swatch" style={{ background: slice.color }} aria-hidden="true" />
+              {sideLabel(slice.side)} · {slice.label}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )
