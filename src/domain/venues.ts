@@ -12,6 +12,40 @@ export const VENUE_STATUSES = [
 
 export type VenueStatusId = (typeof VENUE_STATUSES)[number]['id']
 
+export const WEEKDAYS = [
+  { id: 'sunday', label: 'יום ראשון' },
+  { id: 'monday', label: 'יום שני' },
+  { id: 'tuesday', label: 'יום שלישי' },
+  { id: 'wednesday', label: 'יום רביעי' },
+  { id: 'thursday', label: 'יום חמישי' },
+  { id: 'friday', label: 'יום שישי' },
+  { id: 'saturday', label: 'שבת' },
+] as const
+
+export const MONTHS = [
+  { id: 1, label: 'ינואר' },
+  { id: 2, label: 'פברואר' },
+  { id: 3, label: 'מרץ' },
+  { id: 4, label: 'אפריל' },
+  { id: 5, label: 'מאי' },
+  { id: 6, label: 'יוני' },
+  { id: 7, label: 'יולי' },
+  { id: 8, label: 'אוגוסט' },
+  { id: 9, label: 'ספטמבר' },
+  { id: 10, label: 'אוקטובר' },
+  { id: 11, label: 'נובמבר' },
+  { id: 12, label: 'דצמבר' },
+] as const
+
+export type WeekdayId = (typeof WEEKDAYS)[number]['id']
+
+export interface VenueOffer {
+  id: string
+  month: number
+  weekday: WeekdayId | ''
+  answers: Record<string, string>
+}
+
 export interface VenueDraft {
   name: string
   city: string
@@ -23,6 +57,7 @@ export interface VenueDraft {
   notes: string
   tiktokUrls: string[]
   answers: Record<string, string>
+  offers: VenueOffer[]
   imageUrl: string
 }
 
@@ -168,6 +203,8 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
   } catch {
     errors.push('invalid-url')
   }
+  const offers = normalizeOffers(input.offers, sanitizeAnswers(input.answers))
+  if (offers.length > 12) errors.push('too-many-offers')
   if (errors.length > 0) throw new ValidationError(errors)
   return {
     name,
@@ -179,9 +216,43 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
     visitDate,
     notes,
     tiktokUrls,
-    answers: sanitizeAnswers(input.answers),
+    answers: offers[0]?.answers ?? sanitizeAnswers(input.answers),
+    offers,
     imageUrl,
   }
+}
+
+export function createVenueOffer(): VenueOffer {
+  return { id: `o_${crypto.randomUUID()}`, month: 0, weekday: '', answers: {} }
+}
+
+export function offerTitle(offer: Pick<VenueOffer, 'month' | 'weekday'>): string {
+  const day = WEEKDAYS.find((item) => item.id === offer.weekday)?.label
+  const month = MONTHS.find((item) => item.id === offer.month)?.label
+  if (day && month) return `${day} ב${month}`
+  if (month) return month
+  if (day) return day
+  return 'הצעה חדשה'
+}
+
+function normalizeOffers(value: unknown, fallbackAnswers: Record<string, string>): VenueOffer[] {
+  const raw = Array.isArray(value) ? value : []
+  const offers: VenueOffer[] = []
+  const seen = new Set<string>()
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const record = entry as Record<string, unknown>
+    const id = typeof record.id === 'string' ? record.id.trim() : ''
+    if (!/^[A-Za-z0-9_-]+$/.test(id) || id.length > 80 || seen.has(id)) continue
+    const month = typeof record.month === 'number' && record.month >= 1 && record.month <= 12 ? record.month : 0
+    const weekday = WEEKDAYS.some((item) => item.id === record.weekday) ? record.weekday as WeekdayId : ''
+    seen.add(id)
+    offers.push({ id, month, weekday, answers: sanitizeAnswers(record.answers) })
+  }
+  if (offers.length === 0 && Object.keys(fallbackAnswers).length > 0) {
+    offers.push({ id: 'o_current', month: 0, weekday: '', answers: fallbackAnswers })
+  }
+  return offers
 }
 
 const MAX_IMAGE_CHARS = 170_000
@@ -214,6 +285,7 @@ export function parseStoredVenue(value: unknown): Venue | null {
       notes: typeof record.notes === 'string' ? record.notes : '',
       tiktokUrls: urls,
       answers: sanitizeAnswers(record.answers),
+      offers: Array.isArray(record.offers) ? record.offers as VenueOffer[] : [],
       imageUrl: typeof record.imageUrl === 'string' ? record.imageUrl : '',
     })
   } catch {

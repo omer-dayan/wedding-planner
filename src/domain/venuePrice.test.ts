@@ -11,22 +11,24 @@ describe('portion price', () => {
   it('uses a plate-price question as the closed-card summary', () => {
     expect(portionQuote([plate, parking], { q_plate: '350', q_parking: 'yes' })).toEqual({
       amount: 350,
+      total: null,
+      heads: 0,
       adjusted: false,
       missingGuests: false,
     })
-    expect(formatPortionPrice(350)).toBe('350 ₪ לראש')
+    expect(formatPortionPrice(350)).toBe('350 ₪ לאדם')
   })
 
   it('adds extras and then applies percents', () => {
     const quote = portionQuote([plate, extra, vat], { q_plate: '300', q_extra: '20', q_vat: '18' })
-    expect(quote).toEqual({ amount: 377.6, adjusted: true, missingGuests: false })
-    expect(formatPortionPrice(377.6)).toBe('377.60 ₪ לראש')
+    expect(quote).toEqual({ amount: 377.6, total: null, heads: 0, adjusted: true, missingGuests: false })
+    expect(formatPortionPrice(377.6)).toBe('377.60 ₪ לאדם')
   })
 
   it('splits a hall tax across the guest count instead of adding it to every head', () => {
     const hall: VenueQuestion = { id: 'q_hall', label: 'מס אולם', type: 'number', pricePart: 'add' }
     const quote = portionQuote([plate, hall], { q_plate: '480', q_hall: '1500' }, 100)
-    expect(quote).toEqual({ amount: 495, adjusted: true, missingGuests: false })
+    expect(quote).toEqual({ amount: 495, total: 49500, heads: 100, adjusted: true, missingGuests: false })
   })
 
   it('prefers a guest-count answer on the venue over the wedding list', () => {

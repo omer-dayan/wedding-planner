@@ -61,6 +61,7 @@ const ERROR_TEXT: Record<string, string> = {
   'visit-date': 'תאריך הביקור אינו תקין.',
   'venue-status': 'הסטטוס שנבחר אינו תקין.',
   'too-many-videos': 'אפשר לשמור עד 20 סרטונים לאולם.',
+  'too-many-offers': 'אפשר עד 12 הצעות לאולם.',
   'venue-questions': 'רשימת השאלות אינה תקינה.',
   'question-label': 'לכל שאלה צריך ניסוח קצר.',
   'question-type': 'סוג השאלה אינו תקין.',

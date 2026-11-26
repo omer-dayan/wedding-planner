@@ -244,7 +244,7 @@ export function venueActivity(before: Venue | null, after: Venue | null): Activi
   if (addedVideo) {
     inputs.push({ type: 'venue_video', entity: 'venue', entityId: after.id, entityName: after.name })
   }
-  if (!sameAnswers(before.answers, after.answers)) {
+  if (!sameAnswers(before.answers, after.answers) || !sameOffers(before.offers, after.offers)) {
     inputs.push({ type: 'venue_answers', entity: 'venue', entityId: after.id, entityName: after.name })
   }
   return inputs
@@ -258,6 +258,10 @@ export function venueQuestionsInput(questions: readonly VenueQuestion[]): Activi
     entityName: 'שאלות אולמות',
     details: { count: questions.length, names: questions.slice(0, 5).map((question) => question.label) },
   }
+}
+
+function sameOffers(before: Venue['offers'], after: Venue['offers']): boolean {
+  return JSON.stringify(before) === JSON.stringify(after)
 }
 
 function sameAnswers(before: Record<string, string>, after: Record<string, string>): boolean {

@@ -4,21 +4,26 @@ import { useAppServices } from '../../app/useAppServices.ts'
 import {
   canManageVenues,
   compareVenues,
+  createVenueOffer,
+  MONTHS,
   normalizeTikTokUrl,
   normalizeVenue,
+  offerTitle,
   tiktokAppSearchUrl,
   tiktokVideoId,
   tiktokWebVideoSearchUrl,
   VENUE_STATUSES,
   venueStatusLabel,
   venueVideoQuery,
+  WEEKDAYS,
   type Venue,
   type VenueDraft,
+  type VenueOffer,
   type VenueStatusId,
 } from '../../domain/venues.ts'
-import { formatPortionPrice, portionQuote } from '../../domain/venuePrice.ts'
+import { formatPortionPrice, formatTotalPrice, portionQuote } from '../../domain/venuePrice.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
-import { mergeAnswers, type VenueQuestion } from '../../domain/venueQuestions.ts'
+import type { VenueQuestion } from '../../domain/venueQuestions.ts'
 import { compressImageFile } from '../../ui/compressImage.ts'
 import { Fab } from '../../ui/Fab.tsx'
 import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
@@ -146,8 +151,12 @@ export function VenuesPage() {
                   onStatus={(next) => void changeStatus(venue, next)}
                   onEdit={() => setEditing(venue)}
                   onDelete={() => setDeleting(venue)}
-                  onSaveAnswers={async (answers) => {
-                    await app.venues.update(venue.id, { ...venue, answers: mergeAnswers(venue.answers, app.venueQuestions, answers) })
+                  onSaveOffers={async (offers) => {
+                    await app.venues.update(venue.id, {
+                      ...venue,
+                      offers,
+                      answers: offers[0]?.answers ?? {},
+                    })
                   }}
                 />
               ))}
@@ -172,7 +181,6 @@ export function VenuesPage() {
           <VenueForm
             key={editing === 'new' ? 'new' : editing.id}
             venue={editing === 'new' ? null : editing}
-            questions={app.venueQuestions}
             saving={saving}
             onCancel={() => setEditing(null)}
             onSubmit={save}
@@ -193,7 +201,7 @@ function VenueCard({
   onStatus,
   onEdit,
   onDelete,
-  onSaveAnswers,
+  onSaveOffers,
 }: {
   venue: Venue
   questions: readonly VenueQuestion[]
@@ -204,32 +212,37 @@ function VenueCard({
   onStatus: (status: VenueStatusId) => void
   onEdit: () => void
   onDelete: () => void
-  onSaveAnswers: (answers: Record<string, string>) => Promise<void>
+  onSaveOffers: (offers: VenueOffer[]) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [offers, setOffers] = useState<VenueOffer[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const quote = portionQuote(questions, venue.answers, guestCount)
+  const quotes = venue.offers
+    .map((offer) => portionQuote(questions, offer.answers, guestCount))
+    .filter((quote) => quote !== null)
+  const best = quotes.slice().sort((left, right) => left.amount - right.amount)[0]
 
   function toggle() {
     setOpen((current) => {
       const next = !current
       if (next) {
-        const seeded: Record<string, string> = {}
-        for (const question of questions) seeded[question.id] = venue.answers[question.id] ?? ''
-        setAnswers(seeded)
+        setOffers(venue.offers.map((offer) => ({ ...offer, answers: { ...offer.answers } })))
         setError(null)
       }
       return next
     })
   }
 
-  async function saveAnswers() {
+  function updateOffer(id: string, patch: Partial<VenueOffer>) {
+    setOffers((current) => current.map((offer) => (offer.id === id ? { ...offer, ...patch } : offer)))
+  }
+
+  async function saveOffers() {
     setSaving(true)
     setError(null)
     try {
-      await onSaveAnswers(answers)
+      await onSaveOffers(offers)
     } catch (failure) {
       setError(messageFrom(failure))
     } finally {
@@ -286,30 +299,75 @@ function VenueCard({
         </div>
         {open ? (
           <div className="venue-questions">
-            {questions.length === 0 ? (
-              <p className="hint">אין עדיין שאלות. אפשר להוסיף אותן בהגדרות.</p>
-            ) : questions.map((question) => (
-              <QuestionField
-                key={question.id}
-                question={question}
-                value={answers[question.id] ?? ''}
-                disabled={!manage}
-                onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))}
-              />
-            ))}
-            {manage && questions.length > 0 && (
-              <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveAnswers()}>
-                {saving ? 'שומר…' : 'שמירת תשובות'}
-              </button>
+            {offers.length === 0 && <p className="hint">עדיין אין הצעות לאולם הזה.</p>}
+            {offers.map((offer) => {
+              const quote = portionQuote(questions, offer.answers, guestCount)
+              return (
+                <article key={offer.id} className="venue-offer">
+                  <div className="venue-offer-when">
+                    <label className="field">
+                      <span>יום</span>
+                      <select
+                        value={offer.weekday}
+                        disabled={!manage}
+                        onChange={(event) => updateOffer(offer.id, { weekday: event.target.value as VenueOffer['weekday'] })}
+                      >
+                        <option value="">בחרו יום</option>
+                        {WEEKDAYS.map((day) => <option key={day.id} value={day.id}>{day.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>חודש</span>
+                      <select
+                        value={offer.month || ''}
+                        disabled={!manage}
+                        onChange={(event) => updateOffer(offer.id, { month: Number(event.target.value) })}
+                      >
+                        <option value="">בחרו חודש</option>
+                        {MONTHS.map((month) => <option key={month.id} value={month.id}>{month.label}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <h3>{offerTitle(offer)}</h3>
+                  {questions.map((question) => (
+                    <QuestionField
+                      key={question.id}
+                      question={question}
+                      value={offer.answers[question.id] ?? ''}
+                      disabled={!manage}
+                      onChange={(value) => updateOffer(offer.id, { answers: { ...offer.answers, [question.id]: value } })}
+                    />
+                  ))}
+                  <div className="venue-offer-price">
+                    <strong>{quote?.total != null ? formatTotalPrice(quote.total) : 'אין עדיין מחיר כולל'}</strong>
+                    <span>{quote ? formatPortionPrice(quote.amount) : 'אין מחיר לאדם'}</span>
+                    {quote?.missingGuests && <span>חסרה כמות מוזמנים כדי לחלק את מס האולם</span>}
+                  </div>
+                  {manage && offers.length > 1 && (
+                    <button type="button" className="btn btn-ghost btn-small" onClick={() => setOffers((current) => current.filter((item) => item.id !== offer.id))}>
+                      מחיקת הצעה
+                    </button>
+                  )}
+                </article>
+              )
+            })}
+            {manage && (
+              <div className="form-actions">
+                <button type="button" className="btn btn-ghost" disabled={offers.length >= 12} onClick={() => setOffers((current) => [...current, createVenueOffer()])}>
+                  הצעה נוספת
+                </button>
+                <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveOffers()}>
+                  {saving ? 'שומר…' : 'שמירת הצעות'}
+                </button>
+              </div>
             )}
             {error && <p className="form-error" role="alert">{error}</p>}
             <VenueVideos urls={venue.tiktokUrls} />
           </div>
         ) : (
           <button type="button" className="venue-summary" onClick={toggle}>
-            <strong>{quote ? formatPortionPrice(quote.amount) : 'אין מחיר לראש'}</strong>
-            {quote?.missingGuests && <span>חסרה כמות אורחים לחלוקת מס האולם</span>}
-            {quote?.adjusted && !quote.missingGuests && <span>מחיר לראש אחרי כל החישובים</span>}
+            <strong>{best ? (quotes.length > 1 ? `מ־${formatPortionPrice(best.amount)}` : formatPortionPrice(best.amount)) : 'אין עדיין הצעה'}</strong>
+            {venue.offers.length > 0 && <span>{venue.offers.length === 1 ? offerTitle(venue.offers[0]) : `${venue.offers.length} הצעות`}</span>}
           </button>
         )}
       </div>
@@ -414,13 +472,11 @@ function TikTokIcon() {
 
 function VenueForm({
   venue,
-  questions,
   saving,
   onCancel,
   onSubmit,
 }: {
   venue: Venue | null
-  questions: readonly VenueQuestion[]
   saving: boolean
   onCancel: () => void
   onSubmit: (draft: VenueDraft) => Promise<void>
@@ -435,11 +491,6 @@ function VenueForm({
   const [notes, setNotes] = useState(venue?.notes ?? '')
   const [imageUrl, setImageUrl] = useState(venue?.imageUrl ?? '')
   const [tiktokUrls, setTiktokUrls] = useState<string[]>(venue?.tiktokUrls ?? [])
-  const [answers, setAnswers] = useState<Record<string, string>>(() => {
-    const next: Record<string, string> = {}
-    for (const question of questions) next[question.id] = venue?.answers[question.id] ?? ''
-    return next
-  })
   const [videoUrl, setVideoUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -467,7 +518,8 @@ function VenueForm({
         visitDate,
         notes,
         tiktokUrls,
-        answers: mergeAnswers(venue?.answers ?? {}, questions, answers),
+        answers: venue?.answers ?? {},
+        offers: venue?.offers ?? [],
         imageUrl,
       })
       await onSubmit(draft)
@@ -531,14 +583,6 @@ function VenueForm({
         <span>הערות</span>
         <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} />
       </label>
-      {questions.map((question) => (
-        <QuestionField
-          key={question.id}
-          question={question}
-          value={answers[question.id] ?? ''}
-          onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))}
-        />
-      ))}
       <div className="field">
         <span>סרטוני טיקטוק</span>
         <div className="member-add">

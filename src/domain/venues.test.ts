@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canManageVenues, compareVenues, googleTikTokVideoSearchUrl, mapsSearchUrl, normalizeVenue, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery, type Venue } from './venues.ts'
+import { canManageVenues, compareVenues, googleTikTokVideoSearchUrl, mapsSearchUrl, normalizeVenue, offerTitle, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery, type Venue } from './venues.ts'
 
 describe('venues', () => {
   it('requires a name and reads a TikTok video id', () => {
@@ -14,6 +14,7 @@ describe('venues', () => {
       notes: '',
       tiktokUrls: [],
       answers: {},
+      offers: [],
       imageUrl: '',
     })).toThrow(/venue-name-required/)
     expect(tiktokVideoId('https://www.tiktok.com/@hall/video/1234567890')).toBe('1234567890')
@@ -40,6 +41,7 @@ describe('venues', () => {
       notes: '',
       tiktokUrls: [],
       answers: {},
+      offers: [],
       imageUrl: '',
       addedByEmail: '',
       createdAt: '',
@@ -63,5 +65,25 @@ describe('venues', () => {
     expect(canManageVenues(wedding, 'bride@example.com')).toBe(true)
     expect(canManageVenues(wedding, 'moti@example.com')).toBe(false)
     expect(canManageVenues(null, null)).toBe(true)
+  })
+
+  it('keeps an existing answer sheet as one offer and names a date', () => {
+    const venue = normalizeVenue({
+      name: 'האחוזה',
+      city: '',
+      phone: '',
+      website: '',
+      priceNotes: '',
+      status: 'want',
+      visitDate: '',
+      notes: '',
+      tiktokUrls: [],
+      answers: { q_plate: '480' },
+      offers: [],
+      imageUrl: '',
+    })
+    expect(venue.offers).toEqual([{ id: 'o_current', month: 0, weekday: '', answers: { q_plate: '480' } }])
+    expect(offerTitle({ month: 1, weekday: 'sunday' })).toBe('יום ראשון בינואר')
+    expect(offerTitle({ month: 9, weekday: 'thursday' })).toBe('יום חמישי בספטמבר')
   })
 })

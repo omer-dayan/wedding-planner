@@ -1007,6 +1007,11 @@ textarea { min-height: 88px; resize: vertical; }
 }
 .venue-summary span { color: var(--muted); font-size: 0.85rem; }
 .venue-questions { display: grid; gap: 10px; }
+.venue-offer { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.venue-offer h3 { margin: 0; font-size: 1.05rem; }
+.venue-offer-when { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.venue-offer-price { background: var(--accent-soft); border-radius: 12px; padding: 8px 10px; display: grid; }
+.venue-offer-price span { color: var(--muted); }
 .icon-btn {
   width: 44px;
   height: 44px;

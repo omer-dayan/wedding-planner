@@ -186,7 +186,7 @@ service cloud.firestore {
     function validVenue(data) {
       return data.keys().hasOnly([
           'name', 'city', 'phone', 'website', 'priceNotes', 'status', 'visitDate', 'notes',
-          'tiktokUrls', 'answers', 'imageUrl', 'addedByEmail', 'createdAt', 'updatedAt'
+          'tiktokUrls', 'answers', 'offers', 'imageUrl', 'addedByEmail', 'createdAt', 'updatedAt'
         ])
         && data.name is string
         && data.name.size() > 0
@@ -208,6 +208,7 @@ service cloud.firestore {
         && data.tiktokUrls is list
         && data.tiktokUrls.size() <= 20
         && (!data.keys().hasAny(['answers']) || (data.answers is map && data.answers.size() <= 40))
+        && (!data.keys().hasAny(['offers']) || (data.offers is list && data.offers.size() <= 12))
         && (!data.keys().hasAny(['imageUrl']) || (data.imageUrl is string && data.imageUrl.size() < 180000 && (data.imageUrl == '' || data.imageUrl.matches('https://.+') || data.imageUrl.matches('data:image/.+'))))
         && data.addedByEmail is string
         && data.addedByEmail.size() < 200
