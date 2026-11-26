@@ -4,8 +4,6 @@ import { useAppServices } from '../../app/useAppServices.ts'
 import {
   canManageVenues,
   compareVenues,
-  googleTikTokVideoSearchUrl,
-  mapsSearchUrl,
   normalizeTikTokUrl,
   normalizeVenue,
   tiktokAppSearchUrl,
@@ -18,7 +16,9 @@ import {
   type VenueDraft,
   type VenueStatusId,
 } from '../../domain/venues.ts'
-import { answerProgress, formatAnswer, mergeAnswers, type VenueQuestion } from '../../domain/venueQuestions.ts'
+import { formatPortionPrice, portionQuote } from '../../domain/venuePrice.ts'
+import { mergeAnswers, type VenueQuestion } from '../../domain/venueQuestions.ts'
+import { compressImageFile } from '../../ui/compressImage.ts'
 import { Fab } from '../../ui/Fab.tsx'
 import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
@@ -125,82 +125,22 @@ export function VenuesPage() {
             </div>
           ) : (
             <ul className="venue-list">
-              {visible.map((venue) => {
-                const progress = answerProgress(app.venueQuestions, venue.answers)
-                return (
-                <li key={venue.id} className={`venue-card venue-${venue.status}`}>
-                  <div className={`venue-cover venue-cover-${venue.status}`} aria-hidden="true">
-                    <BuildingIcon />
-                    <span>{venue.name.trim().slice(0, 1)}</span>
-                  </div>
-                  <div className="venue-body">
-                    <div className="venue-title-row">
-                      <div>
-                        <h2 className={venue.status === 'rejected' ? 'is-struck' : undefined}>{venue.name}</h2>
-                        {venue.city && <p className="venue-city"><PinIcon />{venue.city}</p>}
-                      </div>
-                      {manage && (
-                        <OverflowMenu label={`פעולות עבור ${venue.name}`}>
-                          <button type="button" role="menuitem" onClick={() => setEditing(venue)}>עריכה</button>
-                          <button type="button" role="menuitem" className="menu-danger" onClick={() => setDeleting(venue)}>מחיקה</button>
-                        </OverflowMenu>
-                      )}
-                    </div>
-                    {progress.total > 0 && (
-                      <p className="answer-progress">{progress.answered}/{progress.total} נענו</p>
-                    )}
-                    <AnswerList questions={app.venueQuestions} answers={venue.answers} />
-                    <div className="status-wrap">
-                      <button
-                        type="button"
-                        className={`status-chip status-${venue.status}`}
-                        disabled={!manage}
-                        aria-expanded={picking === venue.id}
-                        onClick={() => setPicking((current) => current === venue.id ? null : venue.id)}
-                      >
-                        {venue.status === 'chosen' ? '♥ ' : ''}
-                        {venueStatusLabel(venue.status)}
-                        {venue.status === 'scheduled' && venue.visitDate ? ` · ${formatVisit(venue.visitDate)}` : ''}
-                      </button>
-                      {picking === venue.id && (
-                        <div className="status-picker" role="listbox">
-                          {VENUE_STATUSES.map((item) => (
-                            <button key={item.id} type="button" role="option" aria-selected={item.id === venue.status} onClick={() => void changeStatus(venue, item.id)}>
-                              {item.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {(venue.priceNotes || venue.notes || (venue.visitDate && venue.status !== 'scheduled') || venue.phone) && (
-                      <p className="venue-notes">
-                        {[
-                          venue.priceNotes,
-                          venue.visitDate && venue.status !== 'scheduled' ? `ביקור ${formatVisit(venue.visitDate)}` : '',
-                          venue.phone,
-                          venue.notes,
-                        ].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
-                    <div className="venue-actions">
-                      <button type="button" className="pill pill-primary" onClick={() => openTikTokVideos(venue.name, venue.city)}>
-                        <TikTokIcon />טיקטוק
-                      </button>
-                      <a className="pill" href={googleTikTokVideoSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
-                        <SearchIcon />Google
-                      </a>
-                      <a className="pill" href={mapsSearchUrl(venue.name, venue.city)} target="_blank" rel="noopener noreferrer">
-                        <PinIcon />מפה
-                      </a>
-                    </div>
-                    {venue.website && (
-                      <a className="text-button" href={venue.website} target="_blank" rel="noopener noreferrer">אתר האולם</a>
-                    )}
-                    <VenueVideos urls={venue.tiktokUrls} />
-                  </div>
-                </li>
-                )
-              })}
+              {visible.map((venue) => (
+                <VenueCard
+                  key={venue.id}
+                  venue={venue}
+                  questions={app.venueQuestions}
+                  manage={manage}
+                  picking={picking === venue.id}
+                  onToggleStatus={() => setPicking((current) => current === venue.id ? null : venue.id)}
+                  onStatus={(next) => void changeStatus(venue, next)}
+                  onEdit={() => setEditing(venue)}
+                  onDelete={() => setDeleting(venue)}
+                  onSaveAnswers={async (answers) => {
+                    await app.venues.update(venue.id, { ...venue, answers: mergeAnswers(venue.answers, app.venueQuestions, answers) })
+                  }}
+                />
+              ))}
             </ul>
           )}
         </>
@@ -230,6 +170,137 @@ export function VenuesPage() {
         )}
       </Dialog>
     </section>
+  )
+}
+
+function VenueCard({
+  venue,
+  questions,
+  manage,
+  picking,
+  onToggleStatus,
+  onStatus,
+  onEdit,
+  onDelete,
+  onSaveAnswers,
+}: {
+  venue: Venue
+  questions: readonly VenueQuestion[]
+  manage: boolean
+  picking: boolean
+  onToggleStatus: () => void
+  onStatus: (status: VenueStatusId) => void
+  onEdit: () => void
+  onDelete: () => void
+  onSaveAnswers: (answers: Record<string, string>) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const quote = portionQuote(questions, venue.answers)
+
+  function toggle() {
+    setOpen((current) => {
+      const next = !current
+      if (next) {
+        const seeded: Record<string, string> = {}
+        for (const question of questions) seeded[question.id] = venue.answers[question.id] ?? ''
+        setAnswers(seeded)
+        setError(null)
+      }
+      return next
+    })
+  }
+
+  async function saveAnswers() {
+    setSaving(true)
+    setError(null)
+    try {
+      await onSaveAnswers(answers)
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <li className={`venue-card venue-row venue-${venue.status}`}>
+      <div className={`venue-photo venue-cover-${venue.status}`}>
+        {venue.imageUrl ? (
+          <img src={venue.imageUrl} alt="" />
+        ) : (
+          <span>{venue.name.trim().slice(0, 1) || 'א'}</span>
+        )}
+      </div>
+      <div className="venue-body">
+        <div className="venue-title-row">
+          <button type="button" className="venue-open" aria-expanded={open} onClick={toggle}>
+            <h2 className={venue.status === 'rejected' ? 'is-struck' : undefined}>{venue.name}</h2>
+            {venue.city && <p className="venue-city">{venue.city}</p>}
+          </button>
+          <button type="button" className="icon-btn" aria-label={`טיקטוק של ${venue.name}`} onClick={() => openTikTokVideos(venue.name, venue.city)}>
+            <TikTokIcon />
+          </button>
+          {manage && (
+            <OverflowMenu label={`פעולות עבור ${venue.name}`}>
+              <button type="button" role="menuitem" onClick={onEdit}>עריכה</button>
+              <button type="button" role="menuitem" className="menu-danger" onClick={onDelete}>מחיקה</button>
+            </OverflowMenu>
+          )}
+        </div>
+        <div className="status-wrap">
+          <button
+            type="button"
+            className={`status-chip status-${venue.status}`}
+            disabled={!manage}
+            aria-expanded={picking}
+            onClick={onToggleStatus}
+          >
+            {venue.status === 'chosen' ? '♥ ' : ''}
+            {venueStatusLabel(venue.status)}
+            {venue.status === 'scheduled' && venue.visitDate ? ` · ${formatVisit(venue.visitDate)}` : ''}
+          </button>
+          {picking && (
+            <div className="status-picker" role="listbox">
+              {VENUE_STATUSES.map((item) => (
+                <button key={item.id} type="button" role="option" aria-selected={item.id === venue.status} onClick={() => onStatus(item.id)}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {open ? (
+          <div className="venue-questions">
+            {questions.length === 0 ? (
+              <p className="hint">אין עדיין שאלות. אפשר להוסיף אותן בהגדרות.</p>
+            ) : questions.map((question) => (
+              <QuestionField
+                key={question.id}
+                question={question}
+                value={answers[question.id] ?? ''}
+                disabled={!manage}
+                onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))}
+              />
+            ))}
+            {manage && questions.length > 0 && (
+              <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveAnswers()}>
+                {saving ? 'שומר…' : 'שמירת תשובות'}
+              </button>
+            )}
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <VenueVideos urls={venue.tiktokUrls} />
+          </div>
+        ) : (
+          <button type="button" className="venue-summary" onClick={toggle}>
+            <strong>{quote ? formatPortionPrice(quote.amount) : 'אין מחיר למנה'}</strong>
+            {quote?.adjusted && <span>אחרי כל החישובים</span>}
+          </button>
+        )}
+      </div>
+    </li>
   )
 }
 
@@ -285,14 +356,14 @@ function FilterChip({ active, count, onClick, children }: { active: boolean; cou
   )
 }
 
-function QuestionField({ question, value, onChange }: { question: VenueQuestion; value: string; onChange: (value: string) => void }) {
+function QuestionField({ question, value, onChange, disabled = false }: { question: VenueQuestion; value: string; onChange: (value: string) => void; disabled?: boolean }) {
   if (question.type === 'yesno') {
     return (
       <div className="field">
         <span>{question.label}</span>
         <div className="segment" role="group" aria-label={question.label}>
-          <button type="button" className={value === 'yes' ? 'segment-on' : undefined} onClick={() => onChange(value === 'yes' ? '' : 'yes')}>כן</button>
-          <button type="button" className={value === 'no' ? 'segment-on' : undefined} onClick={() => onChange(value === 'no' ? '' : 'no')}>לא</button>
+          <button type="button" className={value === 'yes' ? 'segment-on' : undefined} disabled={disabled} onClick={() => onChange(value === 'yes' ? '' : 'yes')}>כן</button>
+          <button type="button" className={value === 'no' ? 'segment-on' : undefined} disabled={disabled} onClick={() => onChange(value === 'no' ? '' : 'no')}>לא</button>
         </div>
       </div>
     )
@@ -301,7 +372,7 @@ function QuestionField({ question, value, onChange }: { question: VenueQuestion;
     return (
       <label className="field">
         <span>{question.label}</span>
-        <textarea value={value} rows={3} onChange={(event) => onChange(event.target.value)} />
+        <textarea value={value} rows={3} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
       </label>
     )
   }
@@ -310,6 +381,7 @@ function QuestionField({ question, value, onChange }: { question: VenueQuestion;
       <span>{question.label}</span>
       <input
         value={value}
+        disabled={disabled}
         inputMode={question.type === 'number' ? 'decimal' : 'text'}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -323,35 +395,8 @@ function formatVisit(value: string): string {
   return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
 }
 
-function BuildingIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11h-5v-6H9v6z" fill="currentColor" /></svg>
-}
-
-function PinIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12zm0-9.2A2.8 2.8 0 1 1 12 7a2.8 2.8 0 0 1 0 5.8z" fill="currentColor" /></svg>
-}
-
-function SearchIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 0 1 5.1 10.5l4 4-1.4 1.4-4-4A6.5 6.5 0 1 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" fill="currentColor" /></svg>
-}
-
 function TikTokIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4c.4 2.4 1.8 4 4 4.4v2.2c-1.4 0-2.7-.4-4-1.2v6.2a5.6 5.6 0 1 1-5.6-5.6c.3 0 .6 0 .9.1v2.4a3.2 3.2 0 1 0 2.3 3.1V4z" fill="currentColor" /></svg>
-}
-
-function AnswerList({ questions, answers }: { questions: readonly VenueQuestion[]; answers: Record<string, string> }) {
-  const filled = questions.filter((question) => (answers[question.id] ?? '').trim() !== '')
-  if (filled.length === 0) return null
-  return (
-    <ul className="answer-list">
-      {filled.map((question) => (
-        <li key={question.id}>
-          <span>{question.label}</span>
-          <strong>{formatAnswer(question, answers[question.id] ?? '')}</strong>
-        </li>
-      ))}
-    </ul>
-  )
 }
 
 function VenueForm({
@@ -375,6 +420,7 @@ function VenueForm({
   const [status, setStatus] = useState<VenueStatusId>(venue?.status ?? 'want')
   const [visitDate, setVisitDate] = useState(venue?.visitDate ?? '')
   const [notes, setNotes] = useState(venue?.notes ?? '')
+  const [imageUrl, setImageUrl] = useState(venue?.imageUrl ?? '')
   const [tiktokUrls, setTiktokUrls] = useState<string[]>(venue?.tiktokUrls ?? [])
   const [answers, setAnswers] = useState<Record<string, string>>(() => {
     const next: Record<string, string> = {}
@@ -409,6 +455,7 @@ function VenueForm({
         notes,
         tiktokUrls,
         answers: mergeAnswers(venue?.answers ?? {}, questions, answers),
+        imageUrl,
       })
       await onSubmit(draft)
     } catch (failure) {
@@ -418,6 +465,23 @@ function VenueForm({
 
   return (
     <form className="stack-form" onSubmit={(event) => void handleSubmit(event)}>
+      <label className="field">
+        <span>תמונה</span>
+        {imageUrl && <img className="venue-form-photo" src={imageUrl} alt="" />}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (!file) return
+            void compressImageFile(file).then(setImageUrl).catch(() => setError('לא הצלחנו לקרוא את התמונה.'))
+          }}
+        />
+        {imageUrl && (
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => setImageUrl('')}>הסרת תמונה</button>
+        )}
+      </label>
       <label className="field">
         <span>שם האולם</span>
         <input value={name} onChange={(event) => setName(event.target.value)} />

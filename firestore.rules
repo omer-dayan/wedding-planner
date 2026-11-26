@@ -82,7 +82,7 @@ service cloud.firestore {
     }
 
     function validQuestion(q) {
-      return q.keys().hasOnly(['id', 'label', 'type'])
+      return q.keys().hasOnly(['id', 'label', 'type', 'pricePart'])
         && q.id is string
         && q.id.size() > 0
         && q.id.size() < 80
@@ -90,7 +90,8 @@ service cloud.firestore {
         && q.label is string
         && q.label.size() > 0
         && q.label.size() < 120
-        && q.type in ['text', 'number', 'yesno', 'long'];
+        && q.type in ['text', 'number', 'yesno', 'long']
+        && (!q.keys().hasAny(['pricePart']) || q.pricePart in ['base', 'add', 'percent', 'skip']);
     }
 
     function validQuestions(list) {
@@ -212,7 +213,7 @@ service cloud.firestore {
     function validVenue(data) {
       return data.keys().hasOnly([
           'name', 'city', 'phone', 'website', 'priceNotes', 'status', 'visitDate', 'notes',
-          'tiktokUrls', 'answers', 'addedByEmail', 'createdAt', 'updatedAt'
+          'tiktokUrls', 'answers', 'imageUrl', 'addedByEmail', 'createdAt', 'updatedAt'
         ])
         && data.name is string
         && data.name.size() > 0
@@ -234,6 +235,7 @@ service cloud.firestore {
         && data.tiktokUrls is list
         && data.tiktokUrls.size() <= 20
         && (!data.keys().hasAny(['answers']) || (data.answers is map && data.answers.size() <= 40))
+        && (!data.keys().hasAny(['imageUrl']) || (data.imageUrl is string && data.imageUrl.size() < 180000 && (data.imageUrl == '' || data.imageUrl.matches('https://.+') || data.imageUrl.matches('data:image/.+'))))
         && data.addedByEmail is string
         && data.addedByEmail.size() < 200
         && data.createdAt is string

@@ -76,6 +76,7 @@ function venueToDoc(venue: Venue): Record<string, string | string[] | Record<str
     notes: venue.notes,
     tiktokUrls: venue.tiktokUrls,
     answers: venue.answers,
+    imageUrl: venue.imageUrl,
     addedByEmail: venue.addedByEmail,
     createdAt: venue.createdAt,
     updatedAt: venue.updatedAt,

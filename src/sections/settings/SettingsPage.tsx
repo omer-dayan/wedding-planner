@@ -5,9 +5,13 @@ import { assignedRole, isCoupleOrOwner, roleLabel, WEDDING_ROLES } from '../../d
 import type { WeddingRoleId } from '../../domain/roles.ts'
 import {
   createVenueQuestion,
+  inferredPricePart,
   normalizeVenueQuestions,
+  PRICE_PART_LABELS,
+  PRICE_PARTS,
   VENUE_QUESTION_TYPE_LABELS,
   VENUE_QUESTION_TYPES,
+  type PricePart,
   type VenueQuestion,
   type VenueQuestionType,
 } from '../../domain/venueQuestions.ts'
@@ -263,7 +267,7 @@ function VenueQuestionsEditor({
       }}
     >
       <h2>שאלות לאולמות</h2>
-      <p>השאלות האלה מופיעות בכל אולם. שינוי ניסוח שומר את התשובות, כי הן קשורות למזהה הקבוע.</p>
+      <p>השאלות האלה מופיעות בכל אולם. שאלת מספר יכולה להיכנס לחישוב מחיר למנה: בסיס, תוספת, או אחוז.</p>
       {draft.length === 0 && <p className="hint">עדיין אין שאלות.</p>}
       <ul className="question-editor">
         {draft.map((question, index) => (
@@ -282,13 +286,28 @@ function VenueQuestionsEditor({
               <select
                 value={question.type}
                 disabled={!onSave}
-                onChange={(event) => update(question.id, { type: event.target.value as VenueQuestionType })}
+                onChange={(event) => update(question.id, { type: event.target.value as VenueQuestionType, pricePart: undefined })}
               >
                 {VENUE_QUESTION_TYPES.map((type) => (
                   <option key={type} value={type}>{VENUE_QUESTION_TYPE_LABELS[type]}</option>
                 ))}
               </select>
             </label>
+            {question.type === 'number' && (
+              <label className="field">
+                <span className="visually-hidden">חלק בחישוב המחיר</span>
+                <select
+                  value={question.pricePart ?? ''}
+                  disabled={!onSave}
+                  onChange={(event) => update(question.id, { pricePart: event.target.value === '' ? undefined : event.target.value as PricePart })}
+                >
+                  <option value="">לפי שם השאלה{inferredPricePart(question.label) ? ` · ${PRICE_PART_LABELS[inferredPricePart(question.label)!]}` : ''}</option>
+                  {PRICE_PARTS.map((part) => (
+                    <option key={part} value={part}>{PRICE_PART_LABELS[part]}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {onSave && (
               <div className="question-actions">
                 <button type="button" className="btn btn-ghost btn-small" disabled={index === 0} onClick={() => move(index, -1)} aria-label="הזזה למעלה">↑</button>

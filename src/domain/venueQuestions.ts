@@ -10,10 +10,22 @@ export const VENUE_QUESTION_TYPE_LABELS: Record<VenueQuestionType, string> = {
   long: 'טקסט ארוך',
 }
 
+/** How a number question changes the per-portion price. Missing means infer from the label. */
+export const PRICE_PARTS = ['base', 'add', 'percent', 'skip'] as const
+export type PricePart = (typeof PRICE_PARTS)[number]
+
+export const PRICE_PART_LABELS: Record<PricePart, string> = {
+  base: 'מחיר בסיס למנה',
+  add: 'תוספת למנה',
+  percent: 'אחוז על המחיר',
+  skip: 'לא נכנס לחישוב',
+}
+
 export interface VenueQuestion {
   id: string
   label: string
   type: VenueQuestionType
+  pricePart?: PricePart
 }
 
 const MAX_QUESTIONS = 20
@@ -23,6 +35,26 @@ const ID_PATTERN = /^[A-Za-z0-9_-]+$/
 
 export function isVenueQuestionType(value: unknown): value is VenueQuestionType {
   return typeof value === 'string' && (VENUE_QUESTION_TYPES as readonly string[]).includes(value)
+}
+
+export function isPricePart(value: unknown): value is PricePart {
+  return typeof value === 'string' && (PRICE_PARTS as readonly string[]).includes(value)
+}
+
+/** Guess the price role from a Hebrew label when the question was not tagged explicitly. */
+export function inferredPricePart(label: string): PricePart | null {
+  const text = label.replace(/[״"]/g, '').replace(/\s+/g, '')
+  if (/אחוז|מעמ|שירות|%|ויאט/.test(text)) return 'percent'
+  if (/תוספת|שדרוג/.test(text)) return 'add'
+  if (text.includes('מנה')) return 'base'
+  return null
+}
+
+export function pricePartOf(question: VenueQuestion): PricePart | null {
+  if (question.type !== 'number') return null
+  if (question.pricePart === 'skip') return null
+  if (question.pricePart) return question.pricePart
+  return inferredPricePart(question.label)
 }
 
 export function createVenueQuestion(label = '', type: VenueQuestionType = 'text'): VenueQuestion {
@@ -44,7 +76,12 @@ export function normalizeVenueQuestions(value: unknown): VenueQuestion[] {
     if (!isVenueQuestionType(record.type)) throw new ValidationError(['question-type'])
     if (seen.has(id)) throw new ValidationError(['venue-questions'])
     seen.add(id)
-    questions.push({ id, label, type: record.type })
+    const question: VenueQuestion = { id, label, type: record.type }
+    if (record.type === 'number' && record.pricePart !== undefined && record.pricePart !== '') {
+      if (!isPricePart(record.pricePart)) throw new ValidationError(['question-price'])
+      question.pricePart = record.pricePart
+    }
+    questions.push(question)
   }
   return questions
 }

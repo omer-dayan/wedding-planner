@@ -23,6 +23,7 @@ export interface VenueDraft {
   notes: string
   tiktokUrls: string[]
   answers: Record<string, string>
+  imageUrl: string
 }
 
 export interface Venue extends VenueDraft {
@@ -161,6 +162,12 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
     }
   }
   if (tiktokUrls.length > 20) errors.push('too-many-videos')
+  let imageUrl = ''
+  try {
+    imageUrl = normalizeImage(input.imageUrl)
+  } catch {
+    errors.push('invalid-url')
+  }
   if (errors.length > 0) throw new ValidationError(errors)
   return {
     name,
@@ -173,7 +180,20 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
     notes,
     tiktokUrls,
     answers: sanitizeAnswers(input.answers),
+    imageUrl,
   }
+}
+
+const MAX_IMAGE_CHARS = 170_000
+
+export function normalizeImage(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('data:image/')) {
+    if (trimmed.length > MAX_IMAGE_CHARS || !trimmed.includes(',')) throw new ValidationError(['invalid-url'])
+    return trimmed
+  }
+  return normalizeWebsite(trimmed)
 }
 
 export function parseStoredVenue(value: unknown): Venue | null {
@@ -194,6 +214,7 @@ export function parseStoredVenue(value: unknown): Venue | null {
       notes: typeof record.notes === 'string' ? record.notes : '',
       tiktokUrls: urls,
       answers: sanitizeAnswers(record.answers),
+      imageUrl: typeof record.imageUrl === 'string' ? record.imageUrl : '',
     })
   } catch {
     return null
