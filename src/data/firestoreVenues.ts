@@ -83,6 +83,8 @@ function venueToDoc(venue: Venue) {
       answers: offer.answers,
     })),
     imageUrl: venue.imageUrl,
+    lat: venue.lat,
+    lng: venue.lng,
     addedByEmail: venue.addedByEmail,
     createdAt: venue.createdAt,
     updatedAt: venue.updatedAt,

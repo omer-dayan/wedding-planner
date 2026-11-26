@@ -1,5 +1,6 @@
 import { DomainError } from './errors.ts'
 import type { WeddingRoleId } from './roles.ts'
+import type { FamilyPlace } from './geo.ts'
 import type { GuestCategory } from './guestCategories.ts'
 import type { VenueQuestion } from './venueQuestions.ts'
 
@@ -12,6 +13,7 @@ export interface Wedding {
   weddingDate: string
   venueQuestions: VenueQuestion[]
   guestCategories: GuestCategory[]
+  familyPlaces: FamilyPlace[]
   createdAt: string
   updatedAt: string
 }

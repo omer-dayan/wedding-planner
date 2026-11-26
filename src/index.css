@@ -960,6 +960,33 @@ textarea { min-height: 88px; resize: vertical; }
 .chip span { color: var(--muted); font-size: 0.85rem; }
 .chip-on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .chip-on span { color: var(--on-accent); }
+.venue-map { height: 340px; border-radius: 18px; overflow: hidden; margin: 0 0 12px; position: relative; z-index: 0; }
+.leaflet-container { font-family: inherit; }
+.venue-pin, .gravity-pin { background: transparent; border: 0; }
+.venue-pin span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fffdf8;
+  box-shadow: 0 1px 4px rgba(40, 32, 24, 0.35);
+}
+.gravity-pin span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fffdf8;
+  color: #8d3038;
+  border: 1px solid #8d3038;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.venue-distances { margin: 2px 0 0; color: var(--muted); font-size: 0.85rem; }
+.place-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.place-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
 .venue-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 14px; }
 .venue-card { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); overflow: visible; }
 .venue-row { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: stretch; }

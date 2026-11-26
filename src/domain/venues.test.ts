@@ -16,6 +16,8 @@ describe('venues', () => {
       answers: {},
       offers: [],
       imageUrl: '',
+      lat: null,
+      lng: null,
     })).toThrow(/venue-name-required/)
     expect(tiktokVideoId('https://www.tiktok.com/@hall/video/1234567890')).toBe('1234567890')
     expect(tiktokVideoId('https://vm.tiktok.com/ZMabc/')).toBeNull()
@@ -43,6 +45,8 @@ describe('venues', () => {
       answers: {},
       offers: [],
       imageUrl: '',
+      lat: null,
+      lng: null,
       addedByEmail: '',
       createdAt: '',
       updatedAt: '',
@@ -81,6 +85,8 @@ describe('venues', () => {
       answers: { q_plate: '480' },
       offers: [],
       imageUrl: '',
+      lat: null,
+      lng: null,
     })
     expect(venue.offers).toEqual([{ id: 'o_current', month: 0, weekday: '', answers: { q_plate: '480' } }])
     expect(offerTitle({ month: 1, weekday: 'sunday' })).toBe('יום ראשון בינואר')

@@ -63,7 +63,7 @@ service cloud.firestore {
     }
 
     function validWedding(data) {
-      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'weddingDate', 'venueQuestions', 'guestCategories', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'weddingDate', 'venueQuestions', 'guestCategories', 'familyPlaces', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['name', 'ownerEmail', 'memberEmails', 'createdAt', 'updatedAt'])
         && data.name is string
         && data.name.size() > 0
@@ -79,11 +79,16 @@ service cloud.firestore {
         && (!data.keys().hasAny(['memberRoles']) || (data.memberRoles is map && data.memberRoles.size() <= 40))
         && (!data.keys().hasAny(['weddingDate']) || (data.weddingDate is string && (data.weddingDate == '' || data.weddingDate.matches('^\\d{4}-\\d{2}-\\d{2}$'))))
         && (!data.keys().hasAny(['venueQuestions']) || validQuestions(data.venueQuestions))
-        && (!data.keys().hasAny(['guestCategories']) || validGuestCategories(data.guestCategories));
+        && (!data.keys().hasAny(['guestCategories']) || validGuestCategories(data.guestCategories))
+        && (!data.keys().hasAny(['familyPlaces']) || validFamilyPlaces(data.familyPlaces));
     }
 
     function validGuestCategories(list) {
       return list is list && list.size() <= 40;
+    }
+
+    function validFamilyPlaces(list) {
+      return list is list && list.size() <= 12;
     }
 
     function validQuestions(list) {
@@ -186,7 +191,7 @@ service cloud.firestore {
     function validVenue(data) {
       return data.keys().hasOnly([
           'name', 'city', 'phone', 'website', 'priceNotes', 'status', 'visitDate', 'notes',
-          'tiktokUrls', 'answers', 'offers', 'imageUrl', 'addedByEmail', 'createdAt', 'updatedAt'
+          'tiktokUrls', 'answers', 'offers', 'imageUrl', 'lat', 'lng', 'addedByEmail', 'createdAt', 'updatedAt'
         ])
         && data.name is string
         && data.name.size() > 0
@@ -210,6 +215,8 @@ service cloud.firestore {
         && (!data.keys().hasAny(['answers']) || (data.answers is map && data.answers.size() <= 40))
         && (!data.keys().hasAny(['offers']) || (data.offers is list && data.offers.size() <= 12))
         && (!data.keys().hasAny(['imageUrl']) || (data.imageUrl is string && data.imageUrl.size() < 180000 && (data.imageUrl == '' || data.imageUrl.matches('https://.+') || data.imageUrl.matches('data:image/.+'))))
+        && (!data.keys().hasAny(['lat']) || data.lat == null || data.lat is int || data.lat is float)
+        && (!data.keys().hasAny(['lng']) || data.lng == null || data.lng is int || data.lng is float)
         && data.addedByEmail is string
         && data.addedByEmail.size() < 200
         && data.createdAt is string
@@ -300,6 +307,11 @@ service cloud.firestore {
             && validGuestCategories(request.resource.data.guestCategories)
           )
           || (
+            canModerate(weddingId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['familyPlaces', 'updatedAt'])
+            && validFamilyPlaces(request.resource.data.familyPlaces)
+          )
+          || (
             validWedding(request.resource.data)
             && (
               (
@@ -308,7 +320,7 @@ service cloud.firestore {
               )
               || (
                 canModerate(weddingId)
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'venueQuestions', 'guestCategories', 'updatedAt'])
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'venueQuestions', 'guestCategories', 'familyPlaces', 'updatedAt'])
               )
             )
           )

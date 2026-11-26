@@ -7,6 +7,7 @@ import { createLocalVenueRepository, VENUE_STORAGE_KEY } from '../data/venueRepo
 import { browserStorage } from '../data/storage.ts'
 import type { ActivityActor } from '../domain/activity.ts'
 import { normalizeWeddingDate } from '../domain/members.ts'
+import { normalizeFamilyPlaces, readFamilyPlaces, type FamilyPlace } from '../domain/geo.ts'
 import { normalizeGuestCategories, readGuestCategories, type GuestCategory } from '../domain/guestCategories.ts'
 import { normalizeVenueQuestions, readVenueQuestions, type VenueQuestion } from '../domain/venueQuestions.ts'
 import { venueQuestionsInput } from '../domain/activity.ts'
@@ -16,6 +17,7 @@ import { AppServicesProvider, type AppServices } from './context.tsx'
 const DATE_KEY = 'wedding-planner.weddingDate'
 const QUESTIONS_KEY = 'wedding-planner.venueQuestions'
 const CATEGORIES_KEY = 'wedding-planner.guestCategories'
+const PLACES_KEY = 'wedding-planner.familyPlaces'
 
 const localActor: ActivityActor = { email: '', name: 'מכשיר זה', role: 'groom', photoUrl: '' }
 
@@ -41,6 +43,13 @@ export function LocalApp() {
       return []
     }
   })
+  const [familyPlaces, setFamilyPlaces] = useState<FamilyPlace[]>(() => {
+    try {
+      return readFamilyPlaces(JSON.parse(storage.getItem(PLACES_KEY) || '[]'))
+    } catch {
+      return []
+    }
+  })
   const value = useMemo<AppServices>(
     () => ({
       mode: 'local',
@@ -55,6 +64,7 @@ export function LocalApp() {
       weddingDate,
       venueQuestions,
       guestCategories,
+      familyPlaces,
       onSetWeddingDate: async (date) => {
         const next = normalizeWeddingDate(date)
         storage.setItem(DATE_KEY, next)
@@ -71,6 +81,11 @@ export function LocalApp() {
         storage.setItem(CATEGORIES_KEY, JSON.stringify(next))
         setGuestCategories(next)
       },
+      onSetFamilyPlaces: async (places) => {
+        const next = normalizeFamilyPlaces(places)
+        storage.setItem(PLACES_KEY, JSON.stringify(next))
+        setFamilyPlaces(next)
+      },
       onSignOut: null,
       onSelectWedding: null,
       onRenameWedding: null,
@@ -78,7 +93,7 @@ export function LocalApp() {
       onSetMemberRole: null,
       onRemoveMember: null,
     }),
-    [activity, activityComments, guests, songs, venues, storage, weddingDate, venueQuestions, guestCategories],
+    [activity, activityComments, guests, songs, venues, storage, weddingDate, venueQuestions, guestCategories, familyPlaces],
   )
 
   return (

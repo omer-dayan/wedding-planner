@@ -47,6 +47,8 @@ import { normalizeVenueQuestions, readVenueQuestions } from '../domain/venueQues
 import type { VenueQuestion } from '../domain/venueQuestions.ts'
 import { normalizeGuestCategories, readGuestCategories } from '../domain/guestCategories.ts'
 import type { GuestCategory } from '../domain/guestCategories.ts'
+import { normalizeFamilyPlaces, readFamilyPlaces } from '../domain/geo.ts'
+import type { FamilyPlace } from '../domain/geo.ts'
 import { DomainError, ValidationError } from '../domain/errors.ts'
 import { emailVariants, normalizeWeddingDate, normalizeWeddingName, type Wedding } from '../domain/members.ts'
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
@@ -64,6 +66,7 @@ export interface WeddingRepository {
     activity?: { logger: ActivityLogger; inputs: readonly ActivityInput[] },
   ): Promise<void>
   updateCategories(id: string, categories: readonly GuestCategory[]): Promise<void>
+  updatePlaces(id: string, places: readonly FamilyPlace[]): Promise<void>
   updateMembers(
     id: string,
     memberEmails: readonly string[],
@@ -209,6 +212,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         weddingDate: '',
         venueQuestions: [],
         guestCategories: [],
+        familyPlaces: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       }
@@ -220,6 +224,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         weddingDate: wedding.weddingDate,
         venueQuestions: wedding.venueQuestions,
         guestCategories: wedding.guestCategories,
+        familyPlaces: wedding.familyPlaces,
         createdAt: wedding.createdAt,
         updatedAt: wedding.updatedAt,
       })
@@ -249,6 +254,12 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
     async updateCategories(id, categories) {
       await updateDoc(doc(weddings, id), {
         guestCategories: normalizeGuestCategories(categories),
+        updatedAt: new Date().toISOString(),
+      })
+    },
+    async updatePlaces(id, places) {
+      await updateDoc(doc(weddings, id), {
+        familyPlaces: normalizeFamilyPlaces(places),
         updatedAt: new Date().toISOString(),
       })
     },
@@ -455,6 +466,7 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     weddingDate: typeof data.weddingDate === 'string' ? data.weddingDate : '',
     venueQuestions: readVenueQuestions(data.venueQuestions),
     guestCategories: readGuestCategories(data.guestCategories),
+    familyPlaces: readFamilyPlaces(data.familyPlaces),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
   }

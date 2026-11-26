@@ -59,6 +59,8 @@ export interface VenueDraft {
   answers: Record<string, string>
   offers: VenueOffer[]
   imageUrl: string
+  lat: number | null
+  lng: number | null
 }
 
 export interface Venue extends VenueDraft {
@@ -205,6 +207,9 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
   }
   const offers = normalizeOffers(input.offers, sanitizeAnswers(input.answers))
   if (offers.length > 12) errors.push('too-many-offers')
+  const lat = readCoordinate(input.lat, 90)
+  const lng = readCoordinate(input.lng, 180)
+  if ((lat == null) !== (lng == null)) errors.push('invalid-place')
   if (errors.length > 0) throw new ValidationError(errors)
   return {
     name,
@@ -219,7 +224,17 @@ export function normalizeVenue(input: VenueDraft): VenueDraft {
     answers: offers[0]?.answers ?? sanitizeAnswers(input.answers),
     offers,
     imageUrl,
+    lat,
+    lng,
   }
+}
+
+function readCoordinate(value: number | null, limit: number): number | null {
+  if (value == null) return null
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < -limit || value > limit) {
+    throw new ValidationError(['invalid-place'])
+  }
+  return value
 }
 
 export function createVenueOffer(): VenueOffer {
@@ -287,6 +302,8 @@ export function parseStoredVenue(value: unknown): Venue | null {
       answers: sanitizeAnswers(record.answers),
       offers: Array.isArray(record.offers) ? record.offers as VenueOffer[] : [],
       imageUrl: typeof record.imageUrl === 'string' ? record.imageUrl : '',
+      lat: typeof record.lat === 'number' ? record.lat : null,
+      lng: typeof record.lng === 'number' ? record.lng : null,
     })
   } catch {
     return null

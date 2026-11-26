@@ -56,6 +56,7 @@ const ERROR_TEXT: Record<string, string> = {
   moment: 'הרגע שנבחר אינו תקין.',
   'invalid-url': 'הקישור חייב להתחיל ב-http:// או https://.',
   'venue-name-required': 'יש להזין שם אולם.',
+  'invalid-place': 'המיקום על המפה לא תקין.',
   'city-length': 'שם האזור ארוך מדי.',
   'price-length': 'הערת המחיר ארוכה מדי.',
   'visit-date': 'תאריך הביקור אינו תקין.',

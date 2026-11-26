@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import {
@@ -22,6 +22,9 @@ import {
   type VenueStatusId,
 } from '../../domain/venues.ts'
 import { formatPortionPrice, formatTotalPrice, portionQuote } from '../../domain/venuePrice.ts'
+import { distanceKm, formatDistance, type FamilyPlace } from '../../domain/geo.ts'
+import { geocodeInIsrael } from '../../data/geocode.ts'
+import { VenueMap } from './VenueMap.tsx'
 import { summarizeGuests } from '../../domain/stats.ts'
 import type { VenueQuestion } from '../../domain/venueQuestions.ts'
 import { compressImageFile } from '../../ui/compressImage.ts'
@@ -42,6 +45,14 @@ export function VenuesPage() {
   const [deleting, setDeleting] = useState<Venue | null>(null)
   const [guestCount, setGuestCount] = useState(0)
   const manage = canManageVenues(app.wedding, app.user?.email ?? null)
+  const locating = useRef(new Set<string>())
+  const moveVenue = useCallback(async (venue: Venue, lat: number, lng: number) => {
+    try {
+      await app.venues.update(venue.id, { ...venue, lat, lng })
+    } catch (failure) {
+      setError(messageFrom(failure))
+    }
+  }, [app.venues])
 
   useEffect(() => {
     return app.guests.subscribe((next) => {
@@ -49,6 +60,26 @@ export function VenuesPage() {
       setGuestCount(stats.overall.attending + stats.overall.pending + stats.overall.maybe)
     })
   }, [app.guests])
+
+  useEffect(() => {
+    if (!manage || !venues) return
+    let cancelled = false
+    async function locate() {
+      for (const venue of venues ?? []) {
+        if (cancelled || venue.lat != null || locating.current.has(venue.id)) continue
+        locating.current.add(venue.id)
+        const place = await geocodeInIsrael([venue.name, venue.city].filter(Boolean).join(' '))
+        if (!place || cancelled) continue
+        try {
+          await app.venues.update(venue.id, { ...venue, lat: place.lat, lng: place.lng })
+        } catch (failure) {
+          if (!cancelled) setError(messageFrom(failure))
+        }
+      }
+    }
+    void locate()
+    return () => { cancelled = true }
+  }, [venues, manage, app.venues])
 
   useEffect(() => {
     return app.venues.subscribe(
@@ -120,6 +151,13 @@ export function VenuesPage() {
         <p className="hint">טוען אולמות…</p>
       ) : (
         <>
+          <VenueMap venues={venues} places={app.familyPlaces} manage={manage} onMove={(venue, lat, lng) => void moveVenue(venue, lat, lng)} />
+          {manage && venues.some((venue) => venue.lat != null) && (
+            <p className="hint">אפשר לגרור נקודה של אולם אם היא לא במקום הנכון. הערים המסומנות הן מקום המגורים של המשפחה.</p>
+          )}
+          {app.familyPlaces.length === 0 && (
+            <p className="hint">בהגדרות אפשר לסמן מאיפה המשפחה מגיעה, למשל קרית גת וראש העין, ולראות את המרחק מכל אולם.</p>
+          )}
           <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
             <FilterChip active={status === 'all'} count={counts.get('all') ?? 0} onClick={() => setStatus('all')}>הכל</FilterChip>
             {VENUE_STATUSES.map((item) => (
@@ -144,6 +182,7 @@ export function VenuesPage() {
                   key={venue.id}
                   venue={venue}
                   questions={app.venueQuestions}
+                  places={app.familyPlaces}
                   guestCount={guestCount}
                   manage={manage}
                   picking={picking === venue.id}
@@ -194,6 +233,7 @@ export function VenuesPage() {
 function VenueCard({
   venue,
   questions,
+  places,
   guestCount,
   manage,
   picking,
@@ -205,6 +245,7 @@ function VenueCard({
 }: {
   venue: Venue
   questions: readonly VenueQuestion[]
+  places: readonly FamilyPlace[]
   guestCount: number
   manage: boolean
   picking: boolean
@@ -264,6 +305,7 @@ function VenueCard({
           <button type="button" className="venue-open" aria-expanded={open} onClick={toggle}>
             <h2 className={venue.status === 'rejected' ? 'is-struck' : undefined}>{venue.name}</h2>
             {venue.city && <p className="venue-city">{venue.city}</p>}
+            <VenueDistances venue={venue} places={places} />
           </button>
           <button type="button" className="icon-btn" aria-label={`טיקטוק של ${venue.name}`} onClick={() => openTikTokVideos(venue.name, venue.city)}>
             <TikTokIcon />
@@ -419,6 +461,16 @@ function VenueVideos({ urls }: { urls: readonly string[] }) {
   )
 }
 
+function VenueDistances({ venue, places }: { venue: Venue; places: readonly FamilyPlace[] }) {
+  if (venue.lat == null || venue.lng == null) {
+    return <p className="venue-distances">עדיין בלי נקודה על המפה</p>
+  }
+  if (places.length === 0 || venue.lat == null || venue.lng == null) return null
+  const origin = { lat: venue.lat, lng: venue.lng }
+  const line = places.map((place) => `${place.name} ${formatDistance(distanceKm(origin, place))}`).join(' · ')
+  return <p className="venue-distances">{line}</p>
+}
+
 function FilterChip({ active, count, onClick, children }: { active: boolean; count: number; onClick: () => void; children: string }) {
   return (
     <button type="button" className={active ? 'chip chip-on' : 'chip'} aria-pressed={active} onClick={onClick}>
@@ -521,6 +573,8 @@ function VenueForm({
         answers: venue?.answers ?? {},
         offers: venue?.offers ?? [],
         imageUrl,
+        lat: venue?.lat ?? null,
+        lng: venue?.lng ?? null,
       })
       await onSubmit(draft)
     } catch (failure) {

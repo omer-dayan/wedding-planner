@@ -15,6 +15,8 @@ import {
   type VenueQuestion,
   type VenueQuestionType,
 } from '../../domain/venueQuestions.ts'
+import { normalizeFamilyPlaces, type FamilyPlace } from '../../domain/geo.ts'
+import { geocodeInIsrael } from '../../data/geocode.ts'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
@@ -43,6 +45,7 @@ export function SettingsPage() {
           </p>
         </div>
         <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
+        <FamilyPlacesEditor places={app.familyPlaces} onSave={app.onSetFamilyPlaces} />
         <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
         <BuildStamp />
       </section>
@@ -209,10 +212,94 @@ export function SettingsPage() {
       </div>
       <WeddingDateField date={app.weddingDate} onSave={app.onSetWeddingDate} />
       {isCoupleOrOwner(wedding, app.user.email) && (
-        <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
+        <>
+          <FamilyPlacesEditor places={app.familyPlaces} onSave={app.onSetFamilyPlaces} />
+          <VenueQuestionsEditor questions={app.venueQuestions} onSave={app.onSetVenueQuestions} />
+        </>
       )}
       <BuildStamp />
     </section>
+  )
+}
+
+function FamilyPlacesEditor({
+  places,
+  onSave,
+}: {
+  places: readonly FamilyPlace[]
+  onSave: ((places: FamilyPlace[]) => Promise<void>) | null
+}) {
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function add(event: FormEvent) {
+    event.preventDefault()
+    if (!onSave) return
+    setBusy(true)
+    setError(null)
+    try {
+      const found = await geocodeInIsrael(name)
+      if (!found) {
+        setError('לא מצאנו את העיר. נסו שם כמו קרית גת.')
+        return
+      }
+      const label = found.name || name.trim()
+      if (places.some((place) => place.name === label)) {
+        setError('העיר כבר ברשימה.')
+        return
+      }
+      const next = normalizeFamilyPlaces([
+        ...places,
+        { id: `p_${crypto.randomUUID()}`, name: label, lat: found.lat, lng: found.lng },
+      ])
+      await onSave(next)
+      setName('')
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove(id: string) {
+    if (!onSave) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onSave(places.filter((place) => place.id !== id))
+    } catch (failure) {
+      setError(messageFrom(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="panel stack-form" onSubmit={(event) => void add(event)}>
+      <h2>מקום מגורי משפחות</h2>
+      <p>סמנו ערים שהמשפחה מגיעה מהן. במפת האולמות הן יופיעו כנקודות כובד, עם המרחק מכל אולם.</p>
+      {places.length > 0 && (
+        <ul className="place-list">
+          {places.map((place) => (
+            <li key={place.id}>
+              <span>{place.name}</span>
+              <button type="button" className="btn btn-ghost btn-small" disabled={busy || !onSave} onClick={() => void remove(place.id)}>
+                הסרה
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label className="field">
+        <span>עיר</span>
+        <input value={name} placeholder="למשל קרית גת" onChange={(event) => setName(event.target.value)} />
+      </label>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <button type="submit" className="btn btn-primary" disabled={busy || !onSave || !name.trim() || places.length >= 12}>
+        {busy ? 'שומר…' : 'הוספת עיר'}
+      </button>
+    </form>
   )
 }
 
