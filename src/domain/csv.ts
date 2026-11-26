@@ -176,6 +176,7 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       role: roleFromLabel(cell('role')),
       subSide: 'none',
       category: 'other',
+      categoryId: '',
     })
   })
 

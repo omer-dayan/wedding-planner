@@ -205,7 +205,9 @@ function WeddingSession({
     weddings,
     weddingDate: wedding.weddingDate,
     venueQuestions: wedding.venueQuestions,
+    guestCategories: wedding.guestCategories,
     onSetWeddingDate: canEditDate ? (date) => weddingsRepo.updateDate(wedding.id, date) : null,
+    onSetGuestCategories: canEditDate ? (categories) => weddingsRepo.updateCategories(wedding.id, categories) : null,
     onSetVenueQuestions: canEditDate
       ? (questions) => weddingsRepo.updateQuestions(wedding.id, questions, { logger: activity, inputs: [venueQuestionsInput(questions)] })
       : null,

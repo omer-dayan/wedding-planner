@@ -12,7 +12,7 @@ describe('queryGuests', () => {
   it('filters by side, group and rsvp, and searches phone digits', () => {
     expect(queryGuests(guests, { search: '', side: 'bride', subSide: 'all', category: 'all', rsvp: 'all', sort: 'asc' }).map((guest) => guest.id)).toEqual(['2'])
     expect(queryGuests(guests, { search: '', side: 'unspecified', subSide: 'all', category: 'all', rsvp: 'all', sort: 'asc' }).map((guest) => guest.id)).toEqual(['3'])
-    expect(queryGuests(guests, { search: '', side: 'all', subSide: 'all', category: 'other', rsvp: 'attending', sort: 'asc' }).map((guest) => guest.id)).toEqual(['1'])
+    expect(queryGuests(guests, { search: '', side: 'all', subSide: 'all', category: 'all', rsvp: 'attending', sort: 'asc' }).map((guest) => guest.id)).toEqual(['1'])
     expect(queryGuests(guests, { search: '052222', side: 'all', subSide: 'all', category: 'all', rsvp: 'all', sort: 'asc' }).map((guest) => guest.id)).toEqual(['2'])
     expect(queryGuests(guests, { search: 'טבעונית', side: 'all', subSide: 'all', category: 'all', rsvp: 'all', sort: 'asc' }).map((guest) => guest.id)).toEqual(['2'])
   })

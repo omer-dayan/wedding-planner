@@ -1,3 +1,4 @@
+import type { GuestCategory } from '../../domain/guestCategories.ts'
 import type { GuestStats } from '../../domain/stats.ts'
 import type { Guest } from '../../domain/types.ts'
 import { SideSplit } from './SideSplit.tsx'
@@ -10,7 +11,7 @@ const CARDS = [
   ['maybe', 'אולי', 'עוד לא סגור'],
 ] as const
 
-export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: readonly Guest[] }) {
+export function Summary({ stats, guests = [], categories = [] }: { stats: GuestStats; guests?: readonly Guest[]; categories?: readonly GuestCategory[] }) {
   const values = {
     total: stats.overall.people,
     attending: stats.overall.attending,
@@ -32,7 +33,7 @@ export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: re
           </article>
         ))}
       </div>
-      <SideSplit guests={guests} />
+      <SideSplit guests={guests} categories={categories} />
       {stats.overall.assumedRecords > 0 && (
         <p className="hint">
           ב-{stats.overall.assumedRecords.toLocaleString('he-IL')} רשומות לא צוין מספר אנשים, והן נספרות כ-1 עד

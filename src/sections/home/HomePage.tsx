@@ -74,7 +74,7 @@ export function HomePage() {
         <article className="stat-card"><p className="stat-label">אולמות</p><p className="stat-value">{venues}</p></article>
         {countdown && <article className="stat-card stat-maybe"><p className="stat-label">החתונה</p><p className="stat-value countdown">{countdown}</p></article>}
       </div>
-      <SideSplit guests={guestRows} />
+      <SideSplit guests={guestRows} categories={app.guestCategories} />
       {error && <p className="form-error" role="alert">{error}</p>}
       {commentsError && <p className="form-error" role="alert">{commentsError}</p>}
       {events === null ? (

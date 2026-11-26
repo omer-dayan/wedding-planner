@@ -1,9 +1,10 @@
+import type { GuestCategory } from '../../domain/guestCategories.ts'
 import { sideLabel } from '../../domain/labels.ts'
 import { sideSlices } from '../../domain/stats.ts'
 import type { Guest } from '../../domain/types.ts'
 
-export function SideSplit({ guests }: { guests: readonly Guest[] }) {
-  const slices = sideSlices(guests)
+export function SideSplit({ guests, categories = [] }: { guests: readonly Guest[]; categories?: readonly GuestCategory[] }) {
+  const slices = sideSlices(guests, categories)
   const total = slices.reduce((sum, slice) => sum + slice.people, 0)
   if (total === 0) return null
   const groom = slices[0]

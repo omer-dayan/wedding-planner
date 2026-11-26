@@ -39,6 +39,7 @@ describe('app csv', () => {
         role: null,
         subSide: 'none',
         category: 'other',
+        categoryId: '',
       },
     ])
   })

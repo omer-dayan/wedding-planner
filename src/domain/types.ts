@@ -18,6 +18,8 @@ export interface GuestDraft {
   side: Side | null
   subSide: SubSide
   category: Category
+  /** Id in the wedding's guest category tree. Empty when the guest is not in a category yet. */
+  categoryId: string
   role: WeddingRoleId | null
   group: string
   partySize: number

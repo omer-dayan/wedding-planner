@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CATEGORY_LABELS, RSVP_LABELS, SIDE_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
-import { RSVP_STATUSES, CATEGORIES, SUB_SIDES } from '../../domain/types.ts'
-import type { Category, Guest, GuestDraft, RsvpStatus, SubSide } from '../../domain/types.ts'
+import { flattenTree, legacyCategory, type GuestCategory } from '../../domain/guestCategories.ts'
+import { RSVP_LABELS, SIDE_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
+import { RSVP_STATUSES, SUB_SIDES } from '../../domain/types.ts'
+import type { Guest, GuestDraft, RsvpStatus, SubSide } from '../../domain/types.ts'
 import { normalizeDraft } from '../../domain/validation.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 
@@ -11,6 +12,7 @@ export function GuestForm({
   saving,
   placement,
   canReclassify,
+  categories,
   onCancel,
   onSubmit,
   onDelete,
@@ -19,6 +21,7 @@ export function GuestForm({
   saving: boolean
   placement: { side: 'groom' | 'bride'; subSide: SubSide }
   canReclassify: boolean
+  categories: readonly GuestCategory[]
   onCancel: () => void
   onSubmit: (draft: GuestDraft) => Promise<void>
   onDelete?: () => void
@@ -29,7 +32,7 @@ export function GuestForm({
   const [phone, setPhone] = useState(guest?.phone ?? '')
   const [side, setSide] = useState<'groom' | 'bride'>(guest?.side === 'bride' ? 'bride' : placement.side)
   const [subSide, setSubSide] = useState<SubSide>(guest?.subSide ?? placement.subSide)
-  const [category, setCategory] = useState<Category>(guest?.category ?? (adding ? 'family' : 'other'))
+  const [categoryId, setCategoryId] = useState(guest?.categoryId ?? '')
   const [partySize, setPartySize] = useState(String(guest?.partySize ?? 1))
   const [rsvp, setRsvp] = useState<RsvpStatus>(guest?.rsvp ?? 'pending')
   const [notes, setNotes] = useState(guest?.notes ?? '')
@@ -46,9 +49,10 @@ export function GuestForm({
         phone,
         side: fixedSide,
         subSide: fixedSubSide,
-        category,
+        category: legacyCategory(categories, categoryId),
+        categoryId,
         role: guest?.role ?? null,
-        group: guest?.group ?? '',
+        group: categories.find((item) => item.id === categoryId)?.label ?? '',
         partySize: parsedSize,
         partySizeAssumed: false,
         rsvp,
@@ -106,16 +110,17 @@ export function GuestForm({
           </>
         )}
       </div>
-      <div className="field">
+      <label className="field">
         <span>קטגוריה</span>
-        <div className="segment" role="radiogroup" aria-label="קטגוריה">
-          {CATEGORIES.map((item) => (
-            <button key={item} type="button" className={category === item ? 'segment-on' : ''} aria-pressed={category === item} onClick={() => setCategory(item)}>
-              {CATEGORY_LABELS[item]}
-            </button>
+        <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+          <option value="">ללא קטגוריה</option>
+          {flattenTree(categories).map(({ category, depth }) => (
+            <option key={category.id} value={category.id}>
+              {`${'– '.repeat(depth)}${category.label}`}
+            </option>
           ))}
-        </div>
-      </div>
+        </select>
+      </label>
       <label className="field">
         <span>מספר אנשים (כולל מלווים)</span>
         <input

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { guestsToAppCsv } from '../../domain/csv.ts'
+import { ancestorChain, childrenOf, legacyCategory, pathLabel, subtreeIds } from '../../domain/guestCategories.ts'
 import { CATEGORY_LABELS, RSVP_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
 import { assignedRole, canEditGuest, isCoupleOrOwner, placementForRole } from '../../domain/roles.ts'
 import { EMPTY_QUERY, queryGuests } from '../../domain/query.ts'
 import type { GuestQuery } from '../../domain/query.ts'
-import { CATEGORIES, RSVP_STATUSES, SIDES, SUB_SIDES } from '../../domain/types.ts'
+import { RSVP_STATUSES, SIDES, SUB_SIDES } from '../../domain/types.ts'
 import type { Guest, GuestDraft } from '../../domain/types.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
@@ -13,9 +14,14 @@ import { OverflowMenu } from '../../ui/OverflowMenu.tsx'
 import { downloadTextFile } from '../../ui/download.ts'
 import { Fab } from '../../ui/Fab.tsx'
 import { messageFrom } from '../../ui/messageFrom.ts'
+import { CategoryTreeEditor } from './CategoryTreeEditor.tsx'
 import { ContactsImportDialog } from './ContactsImportDialog.tsx'
 import { GuestForm } from './GuestForm.tsx'
 import { Summary } from './Summary.tsx'
+
+function categoryTrailLabel(categories: Parameters<typeof pathLabel>[0], guest: Guest): string {
+  return pathLabel(categories, guest.categoryId) || guest.group.trim() || CATEGORY_LABELS[guest.category]
+}
 
 type Modal =
   | { type: 'none' }
@@ -32,6 +38,7 @@ export function GuestListPage() {
   const [saving, setSaving] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [treeOpen, setTreeOpen] = useState(false)
 
   useEffect(() => {
     return app.guests.subscribe(
@@ -43,17 +50,17 @@ export function GuestListPage() {
     )
   }, [app.guests])
 
-  const visible = useMemo(() => (guests ? queryGuests(guests, query) : []), [guests, query])
+  const visible = useMemo(
+    () => (guests ? queryGuests(guests, query, app.guestCategories) : []),
+    [guests, query, app.guestCategories],
+  )
   const stats = useMemo(() => summarizeGuests(guests ?? []), [guests])
   const filtersActive = query.search !== '' || query.side !== 'all' || query.subSide !== 'all' || query.category !== 'all' || query.rsvp !== 'all'
   const viewerEmail = app.user?.email ?? null
   const placement = placementForRole(assignedRole(app.wedding, viewerEmail))
   const canReclassify = isCoupleOrOwner(app.wedding, viewerEmail)
-  const categoryCounts = useMemo(() => {
-    const counts = new Map(CATEGORIES.map((item) => [item, 0]))
-    for (const guest of guests ?? []) counts.set(guest.category, (counts.get(guest.category) ?? 0) + 1)
-    return counts
-  }, [guests])
+  const categoryTrail = query.category === 'all' ? [] : ancestorChain(app.guestCategories, query.category)
+  const categoryChoices = childrenOf(app.guestCategories, query.category === 'all' ? '' : query.category)
 
   async function saveGuest(draft: GuestDraft) {
     setSaving(true)
@@ -104,6 +111,9 @@ export function GuestListPage() {
           <button type="button" className="btn btn-ghost" disabled={!guests} onClick={() => setModal({ type: 'contacts' })}>
             ייבוא מאנשי קשר
           </button>
+          {app.onSetGuestCategories && (
+            <button type="button" className="btn btn-ghost" onClick={() => setTreeOpen(true)}>עץ קטגוריות</button>
+          )}
         </div>
       </header>
 
@@ -125,7 +135,7 @@ export function GuestListPage() {
             </div>
           ) : (
           <>
-          <Summary stats={stats} guests={guests} />
+          <Summary stats={stats} guests={guests} categories={app.guestCategories} />
           <div className="toolbar">
             <label className="field grow">
               <span>חיפוש</span>
@@ -154,11 +164,19 @@ export function GuestListPage() {
             </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי קטגוריה">
               <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
-              {CATEGORIES.map((item) => (
-                <button key={item} type="button" className={query.category === item ? 'chip chip-on' : 'chip'} aria-pressed={query.category === item} onClick={() => setQuery({ ...query, category: item })}>
-                  {CATEGORY_LABELS[item]} {categoryCounts.get(item) ?? 0}
+              {categoryTrail.map((category) => (
+                <button key={category.id} type="button" className={query.category === category.id ? 'chip chip-on' : 'chip'} aria-pressed={query.category === category.id} onClick={() => setQuery({ ...query, category: category.id })}>
+                  {category.label}
                 </button>
               ))}
+              {categoryChoices.map((category) => {
+                const people = (guests ?? []).filter((guest) => subtreeIds(app.guestCategories, category.id).includes(guest.categoryId)).reduce((sum, guest) => sum + guest.partySize, 0)
+                return (
+                  <button key={category.id} type="button" className="chip" aria-pressed={false} onClick={() => setQuery({ ...query, category: category.id })}>
+                    {category.label} {people}
+                  </button>
+                )
+              })}
             </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
               <button type="button" className={query.rsvp === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.rsvp === 'all'} onClick={() => setQuery({ ...query, rsvp: 'all' })}>הכל</button>
@@ -218,7 +236,7 @@ export function GuestListPage() {
                         <td className="ltr-inline" dir="ltr">{guest.phone || '—'}</td>
                         <td>{guest.subSide === 'none' ? '—' : SUB_SIDE_LABELS[guest.subSide]}</td>
                         <td>{sideLabel(guest.side)}</td>
-                        <td>{guest.group.trim() || CATEGORY_LABELS[guest.category]}</td>
+                        <td>{categoryTrailLabel(app.guestCategories, guest)}</td>
                         <td>
                           {guest.partySize}
                           {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
@@ -253,7 +271,7 @@ export function GuestListPage() {
                     <p className="guest-chips">
                       <span className="mini-chip">{sideLabel(guest.side)}</span>
                       {guest.subSide !== 'none' && <span className="mini-chip">{SUB_SIDE_LABELS[guest.subSide]}</span>}
-                      <span className="mini-chip">{guest.group.trim() || CATEGORY_LABELS[guest.category]}</span>
+                      <span className="mini-chip">{categoryTrailLabel(app.guestCategories, guest)}</span>
                     </p>
                     <p className="guest-meta">
                       <span className="ltr-inline" dir="ltr">{guest.phone || 'בלי טלפון'}</span>
@@ -288,6 +306,7 @@ export function GuestListPage() {
             saving={saving}
             placement={placement}
             canReclassify={canReclassify}
+            categories={app.guestCategories}
             onCancel={() => setModal({ type: 'none' })}
             onSubmit={saveGuest}
             onDelete={modal.guest ? () => setModal({ type: 'delete', guest: modal.guest as Guest }) : undefined}
@@ -295,6 +314,26 @@ export function GuestListPage() {
         )}
       </Dialog>
 
+      <Dialog open={treeOpen} title="עץ קטגוריות" onClose={() => setTreeOpen(false)}>
+        {treeOpen && app.onSetGuestCategories && (
+          <CategoryTreeEditor
+            categories={app.guestCategories}
+            onClose={() => setTreeOpen(false)}
+            onSave={async (next) => {
+              const removed = app.guestCategories.filter((category) => !next.some((item) => item.id === category.id))
+              await app.onSetGuestCategories!(next)
+              for (const category of removed) {
+                const parentId = category.parentId
+                for (const guest of guests ?? []) {
+                  if (guest.categoryId !== category.id) continue
+                  const label = next.find((item) => item.id === parentId)?.label ?? ''
+                  await app.guests.update(guest.id, { ...guest, categoryId: parentId, group: label, category: legacyCategory(next, parentId) })
+                }
+              }
+            }}
+          />
+        )}
+      </Dialog>
       <Dialog open={modal.type === 'delete'} title="מחיקת מוזמן" onClose={() => setModal({ type: 'none' })}>
         {modal.type === 'delete' && (
           <div className="stack-form">

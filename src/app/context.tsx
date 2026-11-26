@@ -7,6 +7,7 @@ import type { SongRepository } from '../data/songRepository.ts'
 import type { VenueRepository } from '../data/venueRepository.ts'
 import type { Wedding } from '../domain/members.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
+import type { GuestCategory } from '../domain/guestCategories.ts'
 import type { VenueQuestion } from '../domain/venueQuestions.ts'
 
 export interface SessionUser {
@@ -27,8 +28,10 @@ export interface AppServices {
   weddings: readonly Wedding[]
   weddingDate: string
   venueQuestions: VenueQuestion[]
+  guestCategories: GuestCategory[]
   onSetWeddingDate: ((date: string) => Promise<void>) | null
   onSetVenueQuestions: ((questions: VenueQuestion[]) => Promise<void>) | null
+  onSetGuestCategories: ((categories: GuestCategory[]) => Promise<void>) | null
   onSignOut: (() => Promise<void>) | null
   onSelectWedding: ((id: string) => void) | null
   onRenameWedding: ((name: string) => Promise<void>) | null

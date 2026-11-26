@@ -30,6 +30,7 @@ describe('app csv re-import', () => {
           role: null,
           subSide: 'none',
           category: 'other',
+          categoryId: '',
         },
       ],
       clock,
@@ -57,6 +58,7 @@ describe('app csv re-import', () => {
         role: null,
         subSide: 'none',
         category: 'other',
+        categoryId: '',
       },
     ])
     expect(byName.created).toBe(0)

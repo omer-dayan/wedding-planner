@@ -1,9 +1,10 @@
-import type { Category, Guest, RsvpStatus, Side, SubSide } from './types.ts'
+import { subtreeIds, type GuestCategory } from './guestCategories.ts'
+import type { Guest, RsvpStatus, Side, SubSide } from './types.ts'
 
 export type SideFilter = Side | 'unspecified' | 'all'
 export type RsvpFilter = RsvpStatus | 'all'
 export type SubSideFilter = SubSide | 'all'
-export type CategoryFilter = Category | 'all'
+export type CategoryFilter = string
 
 export interface GuestQuery {
   search: string
@@ -23,13 +24,18 @@ export const EMPTY_QUERY: GuestQuery = {
   sort: 'asc',
 }
 
-export function queryGuests(guests: readonly Guest[], query: GuestQuery): Guest[] {
+export function queryGuests(
+  guests: readonly Guest[],
+  query: GuestQuery,
+  categories: readonly GuestCategory[] = [],
+): Guest[] {
   const search = query.search.trim().toLocaleLowerCase('he')
   const digits = search.replace(/\D/g, '')
+  const branch = query.category === 'all' ? null : new Set(subtreeIds(categories, query.category))
   const filtered = guests.filter((guest) => {
     if (query.side !== 'all' && (guest.side ?? 'unspecified') !== query.side) return false
     if (query.subSide !== 'all' && guest.subSide !== query.subSide) return false
-    if (query.category !== 'all' && guest.category !== query.category) return false
+    if (branch && !branch.has(guest.categoryId)) return false
     if (query.rsvp !== 'all' && guest.rsvp !== query.rsvp) return false
     if (!search) return true
     const haystack = `${guest.fullName} ${guest.notes} ${guest.group} ${guest.phone}`.toLocaleLowerCase('he')

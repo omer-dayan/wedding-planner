@@ -1,3 +1,4 @@
+import { categoryById, type GuestCategory } from './guestCategories.ts'
 import { CATEGORY_LABELS } from './labels.ts'
 import type { Guest, RsvpStatus, Side } from './types.ts'
 
@@ -53,12 +54,15 @@ export interface SideSlice {
   groups: { label: string; people: number }[]
 }
 
-export function sideSlices(guests: readonly Pick<Guest, 'side' | 'partySize' | 'group' | 'category'>[]): SideSlice[] {
+export function sideSlices(
+  guests: readonly Pick<Guest, 'side' | 'partySize' | 'group' | 'category' | 'categoryId'>[],
+  categories: readonly GuestCategory[] = [],
+): SideSlice[] {
   return (['groom', 'bride'] as const).map((side) => {
     const mine = guests.filter((guest) => guest.side === side)
     const groups = new Map<string, number>()
     for (const guest of mine) {
-      const label = guest.group.trim() || CATEGORY_LABELS[guest.category]
+      const label = categoryById(categories, guest.categoryId)?.label || guest.group.trim() || CATEGORY_LABELS[guest.category]
       groups.set(label, (groups.get(label) ?? 0) + guest.partySize)
     }
     return {

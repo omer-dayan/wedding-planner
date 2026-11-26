@@ -103,6 +103,7 @@ export function ContactsImportDialog({
         side: placement.side,
         subSide: placement.subSide,
         category,
+        categoryId: '',
         role: null,
         group: '',
         partySize: 1,
