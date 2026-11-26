@@ -1,5 +1,5 @@
 import { subtreeIds, type GuestCategory } from './guestCategories.ts'
-import { guestPeople, type Guest, type RsvpStatus, type Side, type SubSide } from './types.ts'
+import type { Guest, RsvpStatus, Side, SubSide } from './types.ts'
 
 export type SideFilter = Side | 'unspecified' | 'all'
 export type RsvpFilter = RsvpStatus | 'all'
@@ -60,7 +60,7 @@ export function categoryHeadcount(
 ): number {
   const ids = new Set(subtreeIds(categories, categoryId))
   return queryGuests(guests, { ...query, category: 'all' }, categories)
-    .reduce((sum, guest) => (ids.has(guest.categoryId) ? sum + guestPeople(guest) : sum), 0)
+    .reduce((sum, guest) => (ids.has(guest.categoryId) ? sum + guest.partySize : sum), 0)
 }
 
 export function groupOptions(guests: readonly Guest[]): string[] {

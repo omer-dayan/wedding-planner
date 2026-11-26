@@ -76,7 +76,11 @@ export function VenuesPage() {
   useEffect(() => {
     return app.guests.subscribe((next) => {
       const stats = summarizeGuests(next)
-      setGuestCount(stats.overall.attending + stats.overall.pending + stats.overall.maybe)
+      const adults = stats.overall.attending + stats.overall.pending + stats.overall.maybe
+      const children = next
+        .filter((guest) => guest.rsvp === 'attending' || guest.rsvp === 'pending' || guest.rsvp === 'maybe')
+        .reduce((sum, guest) => sum + guest.childCount, 0)
+      setGuestCount(adults + children)
     })
   }, [app.guests])
 

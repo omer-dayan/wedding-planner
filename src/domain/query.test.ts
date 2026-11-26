@@ -39,7 +39,7 @@ describe('queryGuests', () => {
       bride,
       categories,
       'c_family',
-    )).toBe(5)
+    )).toBe(2)
   })
 
   it('sorts by Hebrew name', () => {

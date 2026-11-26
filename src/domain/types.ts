@@ -50,10 +50,6 @@ export function isCategory(value: unknown): value is Category {
   return typeof value === 'string' && (CATEGORIES as readonly string[]).includes(value)
 }
 
-export function guestPeople(guest: Pick<Guest, 'partySize' | 'childCount'>): number {
-  return guest.partySize + guest.childCount
-}
-
 export function isRsvp(value: unknown): value is RsvpStatus {
   return typeof value === 'string' && (RSVP_STATUSES as readonly string[]).includes(value)
 }

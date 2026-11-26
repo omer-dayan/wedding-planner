@@ -26,7 +26,12 @@ export function Summary({ stats, guests = [], categories = [] }: { stats: GuestS
         {CARDS.map(([key, label, hint]) => (
           <article key={key} className={`stat-card stat-${key}`} data-testid={`summary-${key}`}>
             <p className="stat-label">{label}</p>
-            <p className="stat-value">{values[key].toLocaleString('he-IL')}</p>
+            <p className="stat-value">
+              <span>{values[key].toLocaleString('he-IL')}</span>
+              {key === 'total' && stats.overall.children > 0 && (
+                <span className="stat-children" dir="ltr">+{stats.overall.children.toLocaleString('he-IL')}</span>
+              )}
+            </p>
             <p className="stat-hint">
               {key === 'total' ? `${stats.overall.records.toLocaleString('he-IL')} ${hint}` : hint}
             </p>

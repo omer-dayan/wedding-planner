@@ -28,6 +28,16 @@ describe('summarizeGuests', () => {
     expect(stats.bySide.unspecified.assumedRecords).toBe(1)
   })
 
+  it('keeps children beside the adult total', () => {
+    const stats = summarizeGuests([
+      makeGuest({ partySize: 4, childCount: 2, rsvp: 'attending' }),
+      makeGuest({ partySize: 1, childCount: 0, rsvp: 'declined' }),
+    ])
+    expect(stats.overall.people).toBe(5)
+    expect(stats.overall.children).toBe(2)
+    expect(stats.overall.attending).toBe(4)
+  })
+
   it('groups people on each side for the visual split', () => {
     const slices = sideSlices([
       makeGuest({ side: 'groom', partySize: 2, category: 'family', group: 'משפחה גרעינית' }),
