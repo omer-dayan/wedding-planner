@@ -3,6 +3,8 @@ import { useAppServices } from '../../app/useAppServices.ts'
 import { countdownLabel, describeActivity, groupActivityByDay, relativeTime, type ActivityEvent } from '../../domain/activity.ts'
 import { commentsForEvent, type ActivityComment } from '../../domain/activityComments.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
+import type { Guest } from '../../domain/types.ts'
+import { SideSplit } from '../guests/SideSplit.tsx'
 import { sideForRole } from '../../domain/roles.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
 import { markActivitySeen } from './seen.ts'
@@ -13,6 +15,7 @@ export function HomePage() {
   const [comments, setComments] = useState<ActivityComment[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [guests, setGuests] = useState(0)
+  const [guestRows, setGuestRows] = useState<Guest[]>([])
   const [confirmed, setConfirmed] = useState(0)
   const [pending, setPending] = useState(0)
   const [declined, setDeclined] = useState(0)
@@ -35,6 +38,7 @@ export function HomePage() {
 
   useEffect(() => app.guests.subscribe((next) => {
     const stats = summarizeGuests(next)
+    setGuestRows(next)
     setGuests(stats.overall.people)
     setConfirmed(stats.overall.attending)
     setPending(stats.overall.pending)
@@ -70,6 +74,7 @@ export function HomePage() {
         <article className="stat-card"><p className="stat-label">אולמות</p><p className="stat-value">{venues}</p></article>
         {countdown && <article className="stat-card stat-maybe"><p className="stat-label">החתונה</p><p className="stat-value countdown">{countdown}</p></article>}
       </div>
+      <SideSplit guests={guestRows} />
       {error && <p className="form-error" role="alert">{error}</p>}
       {commentsError && <p className="form-error" role="alert">{commentsError}</p>}
       {events === null ? (

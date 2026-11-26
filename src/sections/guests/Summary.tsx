@@ -1,7 +1,6 @@
-import { sideLabel } from '../../domain/labels.ts'
-import type { GuestStats, SideKey } from '../../domain/stats.ts'
-
-const SIDE_ORDER: SideKey[] = ['groom', 'bride', 'shared', 'unspecified']
+import type { GuestStats } from '../../domain/stats.ts'
+import type { Guest } from '../../domain/types.ts'
+import { SideSplit } from './SideSplit.tsx'
 
 const CARDS = [
   ['total', 'סה״כ מוזמנים', 'הזמנות'],
@@ -11,7 +10,7 @@ const CARDS = [
   ['maybe', 'אולי', 'עוד לא סגור'],
 ] as const
 
-export function Summary({ stats }: { stats: GuestStats }) {
+export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: readonly Guest[] }) {
   const values = {
     total: stats.overall.people,
     attending: stats.overall.attending,
@@ -33,38 +32,7 @@ export function Summary({ stats }: { stats: GuestStats }) {
           </article>
         ))}
       </div>
-      <div className="side-panel">
-        <h2>לפי צד</h2>
-        <div className="table-scroll">
-          <table className="side-table">
-            <thead>
-              <tr>
-                <th>צד</th>
-                <th>אנשים</th>
-                <th>מגיעים</th>
-                <th>לא מגיעים</th>
-                <th>ממתינים</th>
-                <th>אולי</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SIDE_ORDER.map((side) => {
-                const counts = stats.bySide[side]
-                return (
-                  <tr key={side}>
-                    <th scope="row">{side === 'unspecified' ? 'לא צוין' : sideLabel(side)}</th>
-                    <td>{counts.people}</td>
-                    <td>{counts.attending}</td>
-                    <td>{counts.declined}</td>
-                    <td>{counts.pending}</td>
-                    <td>{counts.maybe}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SideSplit guests={guests} />
       {stats.overall.assumedRecords > 0 && (
         <p className="hint">
           ב-{stats.overall.assumedRecords.toLocaleString('he-IL')} רשומות לא צוין מספר אנשים, והן נספרות כ-1 עד

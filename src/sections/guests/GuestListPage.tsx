@@ -125,7 +125,7 @@ export function GuestListPage() {
             </div>
           ) : (
           <>
-          <Summary stats={stats} />
+          <Summary stats={stats} guests={guests} />
           <div className="toolbar">
             <label className="field grow">
               <span>חיפוש</span>
@@ -218,7 +218,7 @@ export function GuestListPage() {
                         <td className="ltr-inline" dir="ltr">{guest.phone || '—'}</td>
                         <td>{guest.subSide === 'none' ? '—' : SUB_SIDE_LABELS[guest.subSide]}</td>
                         <td>{sideLabel(guest.side)}</td>
-                        <td>{CATEGORY_LABELS[guest.category]}</td>
+                        <td>{guest.group.trim() || CATEGORY_LABELS[guest.category]}</td>
                         <td>
                           {guest.partySize}
                           {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
@@ -253,7 +253,7 @@ export function GuestListPage() {
                     <p className="guest-chips">
                       <span className="mini-chip">{sideLabel(guest.side)}</span>
                       {guest.subSide !== 'none' && <span className="mini-chip">{SUB_SIDE_LABELS[guest.subSide]}</span>}
-                      <span className="mini-chip">{CATEGORY_LABELS[guest.category]}</span>
+                      <span className="mini-chip">{guest.group.trim() || CATEGORY_LABELS[guest.category]}</span>
                     </p>
                     <p className="guest-meta">
                       <span className="ltr-inline" dir="ltr">{guest.phone || 'בלי טלפון'}</span>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeGuest } from './makeGuest.ts'
-import { summarizeGuests } from './stats.ts'
+import { sideSlices, summarizeGuests } from './stats.ts'
 
 describe('summarizeGuests', () => {
   it('sums people, not rows, and splits the totals by side', () => {
@@ -26,5 +26,22 @@ describe('summarizeGuests', () => {
     expect(stats.bySide.shared.people).toBe(0)
     expect(stats.bySide.unspecified.maybe).toBe(1)
     expect(stats.bySide.unspecified.assumedRecords).toBe(1)
+  })
+
+  it('groups people on each side for the visual split', () => {
+    const slices = sideSlices([
+      makeGuest({ side: 'groom', partySize: 2, category: 'family', group: 'משפחה גרעינית' }),
+      makeGuest({ side: 'groom', partySize: 4, category: 'friends', group: 'חברים' }),
+      makeGuest({ side: 'bride', partySize: 3, category: 'family', group: 'משפחה' }),
+    ])
+    expect(slices[0]).toEqual({
+      side: 'groom',
+      people: 6,
+      groups: [
+        { label: 'משפחה גרעינית', people: 2 },
+        { label: 'חברים', people: 4 },
+      ],
+    })
+    expect(slices[1].people).toBe(3)
   })
 })

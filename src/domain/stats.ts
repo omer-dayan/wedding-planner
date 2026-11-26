@@ -1,3 +1,4 @@
+import { CATEGORY_LABELS } from './labels.ts'
 import type { Guest, RsvpStatus, Side } from './types.ts'
 
 export interface StatusCounts {
@@ -42,6 +43,37 @@ export function summarizeGuests(guests: readonly Guest[]): GuestStats {
     addCounts(bySide[guest.side ?? 'unspecified'], guest)
   }
   return { overall, bySide }
+}
+
+const GROUP_RANK = ['משפחה גרעינית', 'משפחה', 'חברים', 'עבודה']
+
+export interface SideSlice {
+  side: 'groom' | 'bride'
+  people: number
+  groups: { label: string; people: number }[]
+}
+
+export function sideSlices(guests: readonly Pick<Guest, 'side' | 'partySize' | 'group' | 'category'>[]): SideSlice[] {
+  return (['groom', 'bride'] as const).map((side) => {
+    const mine = guests.filter((guest) => guest.side === side)
+    const groups = new Map<string, number>()
+    for (const guest of mine) {
+      const label = guest.group.trim() || CATEGORY_LABELS[guest.category]
+      groups.set(label, (groups.get(label) ?? 0) + guest.partySize)
+    }
+    return {
+      side,
+      people: mine.reduce((sum, guest) => sum + guest.partySize, 0),
+      groups: [...groups.entries()]
+        .sort((left, right) => rank(left[0]) - rank(right[0]))
+        .map(([label, people]) => ({ label, people })),
+    }
+  })
+}
+
+function rank(label: string): number {
+  const index = GROUP_RANK.indexOf(label)
+  return index === -1 ? GROUP_RANK.length : index
 }
 
 function addCounts(bucket: StatusCounts, guest: Guest) {
