@@ -34,6 +34,12 @@ describe('queryGuests', () => {
     expect(categoryHeadcount(rows, bride, categories, 'c_iluz')).toBe(0)
     expect(categoryHeadcount(rows, bride, categories, 'c_friends')).toBe(5)
     expect(categoryHeadcount(rows, EMPTY_QUERY, categories, 'c_family')).toBe(9)
+    expect(categoryHeadcount(
+      [makeGuest({ side: 'bride', categoryId: 'c_family', partySize: 2, childCount: 3 })],
+      bride,
+      categories,
+      'c_family',
+    )).toBe(5)
   })
 
   it('sorts by Hebrew name', () => {

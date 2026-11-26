@@ -33,6 +33,7 @@ describe('app csv', () => {
         side: 'bride',
         group: 'חברים / חברים צבא',
         partySize: 3,
+        childCount: 0,
         partySizeAssumed: true,
         rsvp: 'attending',
         notes: 'שורה, עם "ציטוט"',

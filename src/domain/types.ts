@@ -23,6 +23,8 @@ export interface GuestDraft {
   role: WeddingRoleId | null
   group: string
   partySize: number
+  /** Children arriving with this guest, in addition to partySize. */
+  childCount: number
   partySizeAssumed: boolean
   rsvp: RsvpStatus
   notes: string
@@ -46,6 +48,10 @@ export function isSubSide(value: unknown): value is SubSide {
 
 export function isCategory(value: unknown): value is Category {
   return typeof value === 'string' && (CATEGORIES as readonly string[]).includes(value)
+}
+
+export function guestPeople(guest: Pick<Guest, 'partySize' | 'childCount'>): number {
+  return guest.partySize + guest.childCount
 }
 
 export function isRsvp(value: unknown): value is RsvpStatus {

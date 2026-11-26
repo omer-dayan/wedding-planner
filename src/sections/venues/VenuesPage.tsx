@@ -45,6 +45,8 @@ export function VenuesPage() {
   const [deleting, setDeleting] = useState<Venue | null>(null)
   const [guestCount, setGuestCount] = useState(0)
   const [mapView, setMapView] = useState(false)
+  const [placingId, setPlacingId] = useState<string | null>(null)
+  const [focus, setFocus] = useState<{ lat: number; lng: number } | null>(null)
   const manage = canManageVenues(app.wedding, app.user?.email ?? null)
   const locating = useRef(new Set<string>())
   const moveVenue = useCallback(async (venue: Venue, lat: number, lng: number) => {
@@ -54,6 +56,22 @@ export function VenuesPage() {
       setError(messageFrom(failure))
     }
   }, [app.venues])
+  const placeSelected = useCallback(async (lat: number, lng: number) => {
+    const venue = (venues ?? []).find((item) => item.id === placingId)
+    if (!venue) return
+    await moveVenue(venue, lat, lng)
+  }, [venues, placingId, moveVenue])
+  const startPlacing = useCallback(async (venue: Venue) => {
+    setMapView(true)
+    setPlacingId(venue.id)
+    setError(null)
+    if (venue.lat != null && venue.lng != null) {
+      setFocus({ lat: venue.lat, lng: venue.lng })
+      return
+    }
+    const found = await geocodeInIsrael([venue.city, venue.name].filter(Boolean).join(' '))
+    if (found) setFocus({ lat: found.lat, lng: found.lng })
+  }, [])
 
   useEffect(() => {
     return app.guests.subscribe((next) => {
@@ -142,7 +160,33 @@ export function VenuesPage() {
     <section className={mapView ? 'page page-map' : 'page'}>
       {mapView && venues && (
         <div className="venue-map-screen">
-          <VenueMap venues={venues} places={app.familyPlaces} manage={manage} onMove={(venue, lat, lng) => void moveVenue(venue, lat, lng)} />
+          <VenueMap
+            venues={venues}
+            places={app.familyPlaces}
+            manage={manage}
+            placing={placingId !== null}
+            focus={focus}
+            onMove={(venue, lat, lng) => void moveVenue(venue, lat, lng)}
+            onPlace={(lat, lng) => void placeSelected(lat, lng)}
+          />
+          {manage && (
+            <div className="map-place-bar">
+              <p>{placingId ? `לחצו על המפה כדי לסמן את ${venues.find((item) => item.id === placingId)?.name ?? 'האולם'}.` : 'בחרו אולם, ואז לחצו על המפה במקום שלו.'}</p>
+              <div className="chip-row">
+                {venues.map((venue) => (
+                  <button
+                    key={venue.id}
+                    type="button"
+                    className={placingId === venue.id ? 'chip chip-on' : 'chip'}
+                    aria-pressed={placingId === venue.id}
+                    onClick={() => void startPlacing(venue)}
+                  >
+                    {venue.name}{venue.lat == null ? '' : ' ✓'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {error && <p className="form-error map-banner" role="alert">{error}</p>}
         </div>
       )}
@@ -193,6 +237,7 @@ export function VenuesPage() {
                   onStatus={(next) => void changeStatus(venue, next)}
                   onEdit={() => setEditing(venue)}
                   onDelete={() => setDeleting(venue)}
+                  onPlace={() => void startPlacing(venue)}
                   onSaveOffers={async (offers) => {
                     await app.venues.update(venue.id, {
                       ...venue,
@@ -208,7 +253,10 @@ export function VenuesPage() {
       )}
         </>
       )}
-      <button type="button" className="map-fab" aria-pressed={mapView} onClick={() => setMapView((current) => !current)}>
+      <button type="button" className="map-fab" aria-pressed={mapView} onClick={() => {
+        setMapView((current) => !current)
+        setPlacingId(null)
+      }}>
         {mapView ? <ListIcon /> : <MapIcon />}
         <span>{mapView ? 'רשימה' : 'תצוגת מפה'}</span>
       </button>
@@ -251,6 +299,7 @@ function VenueCard({
   onEdit,
   onDelete,
   onSaveOffers,
+  onPlace,
 }: {
   venue: Venue
   questions: readonly VenueQuestion[]
@@ -263,6 +312,7 @@ function VenueCard({
   onEdit: () => void
   onDelete: () => void
   onSaveOffers: (offers: VenueOffer[]) => Promise<void>
+  onPlace: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [offers, setOffers] = useState<VenueOffer[]>([])
@@ -326,6 +376,11 @@ function VenueCard({
             </OverflowMenu>
           )}
         </div>
+        {manage && (
+          <button type="button" className="btn btn-ghost btn-small" onClick={onPlace}>
+            {venue.lat == null ? 'סימון מיקום במפה' : 'עדכון מיקום במפה'}
+          </button>
+        )}
         <div className="status-wrap">
           <button
             type="button"

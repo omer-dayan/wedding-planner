@@ -34,6 +34,7 @@ export function GuestForm({
   const [subSide, setSubSide] = useState<SubSide>(guest?.subSide ?? placement.subSide)
   const [categoryId, setCategoryId] = useState(guest?.categoryId ?? '')
   const [partySize, setPartySize] = useState(String(guest?.partySize ?? 1))
+  const [childCount, setChildCount] = useState(String(guest?.childCount ?? 0))
   const [rsvp, setRsvp] = useState<RsvpStatus>(guest?.rsvp ?? 'pending')
   const [notes, setNotes] = useState(guest?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +44,7 @@ export function GuestForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const parsedSize = Number(partySize)
+    const parsedChildren = Number(childCount)
     try {
       const draft = normalizeDraft({
         fullName,
@@ -54,6 +56,7 @@ export function GuestForm({
         role: guest?.role ?? null,
         group: categories.find((item) => item.id === categoryId)?.label ?? '',
         partySize: parsedSize,
+        childCount: parsedChildren,
         partySizeAssumed: false,
         rsvp,
         notes,
@@ -128,6 +131,17 @@ export function GuestForm({
           onChange={(event) => setPartySize(event.target.value)}
           inputMode="numeric"
           min={1}
+          max={100}
+          type="number"
+        />
+      </label>
+      <label className="field">
+        <span>ילדים שמגיעים איתו</span>
+        <input
+          value={childCount}
+          onChange={(event) => setChildCount(event.target.value)}
+          inputMode="numeric"
+          min={0}
           max={100}
           type="number"
         />

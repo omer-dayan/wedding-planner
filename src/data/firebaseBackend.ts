@@ -443,6 +443,7 @@ function guestToDoc(guest: Guest): Record<string, string | number | boolean | nu
     role: guest.role,
     group: guest.group,
     partySize: guest.partySize,
+    childCount: guest.childCount,
     partySizeAssumed: guest.partySizeAssumed,
     rsvp: guest.rsvp,
     notes: guest.notes,

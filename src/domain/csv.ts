@@ -10,6 +10,7 @@ export const APP_CSV_HEADERS = [
   'צד',
   'קבוצה',
   'מספר אנשים',
+  'ילדים',
   'מספר לא צוין',
   'סטטוס הגעה',
   'הערות',
@@ -23,6 +24,7 @@ type CsvField =
   | 'side'
   | 'group'
   | 'partySize'
+  | 'childCount'
   | 'partySizeAssumed'
   | 'rsvp'
   | 'notes'
@@ -44,6 +46,8 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   'מספר אנשים': 'partySize',
   partysize: 'partySize',
   count: 'partySize',
+  ילדים: 'childCount',
+  children: 'childCount',
   'מספר לא צוין': 'partySizeAssumed',
   'סטטוס הגעה': 'rsvp',
   rsvp: 'rsvp',
@@ -103,6 +107,7 @@ export function guestsToAppCsv(guests: readonly Guest[]): string {
       guest.side ? SIDE_LABELS[guest.side] : '',
       guest.group,
       String(guest.partySize),
+      String(guest.childCount),
       guest.partySizeAssumed ? 'כן' : 'לא',
       RSVP_LABELS[guest.rsvp],
       guest.notes,
@@ -147,6 +152,11 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       errors.push({ line, code: 'invalid-count' })
       return
     }
+    const childCount = parseChildCount(columns.has('childCount') ? cell('childCount') : '')
+    if (childCount === null) {
+      errors.push({ line, code: 'child-count' })
+      return
+    }
 
     const sideCell = cell('side')
     const side = SIDE_FROM_LABEL.get(sideCell)
@@ -170,6 +180,7 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       side: side ?? null,
       group: cell('group'),
       partySize,
+      childCount,
       partySizeAssumed: parseYes(cell('partySizeAssumed')),
       rsvp,
       notes: columns.has('notes') ? (row[columns.get('notes') as number] ?? '').trim() : '',
@@ -246,6 +257,13 @@ function escapeCell(value: string): string {
 
 function normalizeHeader(value: string): string {
   return value.replace(/^\uFEFF/, '').trim().toLowerCase()
+}
+
+function parseChildCount(value: string): number | null {
+  if (!value.trim()) return 0
+  const count = Number(value)
+  if (!Number.isInteger(count) || count < 0 || count > 100) return null
+  return count
 }
 
 function parsePartySize(value: string): number | null {

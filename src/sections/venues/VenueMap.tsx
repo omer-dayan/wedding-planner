@@ -17,12 +17,18 @@ export function VenueMap({
   venues,
   places,
   manage,
+  placing,
+  focus,
   onMove,
+  onPlace,
 }: {
   venues: readonly Venue[]
   places: readonly FamilyPlace[]
   manage: boolean
+  placing: boolean
+  focus: { lat: number; lng: number } | null
   onMove: (venue: Venue, lat: number, lng: number) => void
+  onPlace: (lat: number, lng: number) => void
 }) {
   const node = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -82,7 +88,7 @@ export function VenueMap({
       })
       marker.addTo(layer)
     }
-    if (bounds.length > 0) {
+    if (!placing && bounds.length > 0) {
       map.fitBounds(L.latLngBounds(bounds), {
         paddingTopLeft: [24, 96],
         paddingBottomRight: [24, 140],
@@ -91,9 +97,26 @@ export function VenueMap({
     }
     map.invalidateSize()
     return () => { layer.remove() }
-  }, [venues, places, manage, onMove])
+  }, [venues, places, manage, onMove, placing])
 
-  return <div ref={node} className="venue-map" />
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !focus) return
+    map.setView([focus.lat, focus.lng], 14)
+  }, [focus])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const place = (event: L.LeafletMouseEvent) => {
+      if (!placing) return
+      onPlace(event.latlng.lat, event.latlng.lng)
+    }
+    map.on('click', place)
+    return () => { map.off('click', place) }
+  }, [placing, onPlace])
+
+  return <div ref={node} className={placing ? 'venue-map is-placing' : 'venue-map'} />
 }
 
 function escapeHtml(value: string): string {
