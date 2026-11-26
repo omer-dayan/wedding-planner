@@ -82,100 +82,12 @@ service cloud.firestore {
         && (!data.keys().hasAny(['guestCategories']) || validGuestCategories(data.guestCategories));
     }
 
-    function validGuestCategory(c) {
-      return c.keys().hasOnly(['id', 'label', 'parentId'])
-        && c.id is string
-        && c.id.size() > 0
-        && c.id.size() < 80
-        && c.id.matches('^[A-Za-z0-9_-]+$')
-        && c.label is string
-        && c.label.size() > 0
-        && c.label.size() < 80
-        && c.parentId is string
-        && c.parentId.size() < 80;
-    }
-
     function validGuestCategories(list) {
-      return list is list
-        && list.size() <= 40
-        && (list.size() < 1 || validGuestCategory(list[0]))
-        && (list.size() < 2 || validGuestCategory(list[1]))
-        && (list.size() < 3 || validGuestCategory(list[2]))
-        && (list.size() < 4 || validGuestCategory(list[3]))
-        && (list.size() < 5 || validGuestCategory(list[4]))
-        && (list.size() < 6 || validGuestCategory(list[5]))
-        && (list.size() < 7 || validGuestCategory(list[6]))
-        && (list.size() < 8 || validGuestCategory(list[7]))
-        && (list.size() < 9 || validGuestCategory(list[8]))
-        && (list.size() < 10 || validGuestCategory(list[9]))
-        && (list.size() < 11 || validGuestCategory(list[10]))
-        && (list.size() < 12 || validGuestCategory(list[11]))
-        && (list.size() < 13 || validGuestCategory(list[12]))
-        && (list.size() < 14 || validGuestCategory(list[13]))
-        && (list.size() < 15 || validGuestCategory(list[14]))
-        && (list.size() < 16 || validGuestCategory(list[15]))
-        && (list.size() < 17 || validGuestCategory(list[16]))
-        && (list.size() < 18 || validGuestCategory(list[17]))
-        && (list.size() < 19 || validGuestCategory(list[18]))
-        && (list.size() < 20 || validGuestCategory(list[19]))
-        && (list.size() < 21 || validGuestCategory(list[20]))
-        && (list.size() < 22 || validGuestCategory(list[21]))
-        && (list.size() < 23 || validGuestCategory(list[22]))
-        && (list.size() < 24 || validGuestCategory(list[23]))
-        && (list.size() < 25 || validGuestCategory(list[24]))
-        && (list.size() < 26 || validGuestCategory(list[25]))
-        && (list.size() < 27 || validGuestCategory(list[26]))
-        && (list.size() < 28 || validGuestCategory(list[27]))
-        && (list.size() < 29 || validGuestCategory(list[28]))
-        && (list.size() < 30 || validGuestCategory(list[29]))
-        && (list.size() < 31 || validGuestCategory(list[30]))
-        && (list.size() < 32 || validGuestCategory(list[31]))
-        && (list.size() < 33 || validGuestCategory(list[32]))
-        && (list.size() < 34 || validGuestCategory(list[33]))
-        && (list.size() < 35 || validGuestCategory(list[34]))
-        && (list.size() < 36 || validGuestCategory(list[35]))
-        && (list.size() < 37 || validGuestCategory(list[36]))
-        && (list.size() < 38 || validGuestCategory(list[37]))
-        && (list.size() < 39 || validGuestCategory(list[38]))
-        && (list.size() < 40 || validGuestCategory(list[39]));
-    }
-
-    function validQuestion(q) {
-      return q.keys().hasOnly(['id', 'label', 'type', 'pricePart'])
-        && q.id is string
-        && q.id.size() > 0
-        && q.id.size() < 80
-        && q.id.matches('^[A-Za-z0-9_-]+$')
-        && q.label is string
-        && q.label.size() > 0
-        && q.label.size() < 120
-        && q.type in ['text', 'number', 'yesno', 'long']
-        && (!q.keys().hasAny(['pricePart']) || q.pricePart in ['base', 'add', 'split', 'percent', 'guests', 'skip']);
+      return list is list && list.size() <= 40;
     }
 
     function validQuestions(list) {
-      return list is list
-        && list.size() <= 20
-        && (list.size() < 1 || validQuestion(list[0]))
-        && (list.size() < 2 || validQuestion(list[1]))
-        && (list.size() < 3 || validQuestion(list[2]))
-        && (list.size() < 4 || validQuestion(list[3]))
-        && (list.size() < 5 || validQuestion(list[4]))
-        && (list.size() < 6 || validQuestion(list[5]))
-        && (list.size() < 7 || validQuestion(list[6]))
-        && (list.size() < 8 || validQuestion(list[7]))
-        && (list.size() < 9 || validQuestion(list[8]))
-        && (list.size() < 10 || validQuestion(list[9]))
-        && (list.size() < 11 || validQuestion(list[10]))
-        && (list.size() < 12 || validQuestion(list[11]))
-        && (list.size() < 13 || validQuestion(list[12]))
-        && (list.size() < 14 || validQuestion(list[13]))
-        && (list.size() < 15 || validQuestion(list[14]))
-        && (list.size() < 16 || validQuestion(list[15]))
-        && (list.size() < 17 || validQuestion(list[16]))
-        && (list.size() < 18 || validQuestion(list[17]))
-        && (list.size() < 19 || validQuestion(list[18]))
-        && (list.size() < 20 || validQuestion(list[19]));
+      return list is list && list.size() <= 20;
     }
 
     function validGuest(data) {
@@ -378,17 +290,26 @@ service cloud.firestore {
         && myEmail() in request.resource.data.memberEmails;
 
       allow update: if signedIn()
-        && validWedding(request.resource.data)
         && request.resource.data.ownerEmail == resource.data.ownerEmail
         && request.resource.data.createdAt == resource.data.createdAt
         && (
           (
-            isOwner(weddingId)
-            && myEmail() in request.resource.data.memberEmails
+            canModerate(weddingId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestCategories', 'updatedAt'])
+            && validGuestCategories(request.resource.data.guestCategories)
           )
           || (
-            canModerate(weddingId)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'venueQuestions', 'guestCategories', 'updatedAt'])
+            validWedding(request.resource.data)
+            && (
+              (
+                isOwner(weddingId)
+                && myEmail() in request.resource.data.memberEmails
+              )
+              || (
+                canModerate(weddingId)
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'venueQuestions', 'guestCategories', 'updatedAt'])
+              )
+            )
           )
         );
 

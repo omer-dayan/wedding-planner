@@ -74,7 +74,7 @@ const ERROR_TEXT: Record<string, string> = {
   'app-csv': 'זהו קובץ הייצוא של האפליקציה. השתמשו בכפתור «ייבוא CSV».',
   'missing-header': 'בקובץ אין שורת כותרות של הרשימה. לייבוא מגיליון השתמשו ב«ייבוא מ-Google Sheets».',
   'invalid-count': 'מספר האנשים אינו תקין.',
-  'permission-denied': 'אין הרשאה. ודאו שהאימייל שלכם מופיע ברשימת השותפים.',
+  'permission-denied': 'הפעולה נחסמה. רעננו את האפליקציה ונסו שוב.',
   'unauthorized-domain': 'הדומיין לא מורשה ב-Firebase. יש להוסיף את omer-dayan.github.io לדומיינים המורשים.',
   'popup-blocked': 'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.',
   'network-auth': 'אין חיבור לרשת. נסו שוב.',

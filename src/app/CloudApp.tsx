@@ -109,7 +109,11 @@ function WeddingGate({ services, user }: { services: FirebaseServices; user: Ses
         setWeddings(next)
         setError(null)
       },
-      (failure) => setError(messageFrom(failure)),
+      (failure) => setError(
+        mapAuthError(failure) === 'permission-denied'
+          ? 'אין הרשאה. ודאו שהאימייל שלכם מופיע ברשימת השותפים.'
+          : messageFrom(failure),
+      ),
     )
   }, [weddingsRepo])
 
