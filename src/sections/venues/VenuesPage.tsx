@@ -44,6 +44,7 @@ export function VenuesPage() {
   const [picking, setPicking] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Venue | null>(null)
   const [guestCount, setGuestCount] = useState(0)
+  const [mapView, setMapView] = useState(false)
   const manage = canManageVenues(app.wedding, app.user?.email ?? null)
   const locating = useRef(new Set<string>())
   const moveVenue = useCallback(async (venue: Venue, lat: number, lng: number) => {
@@ -138,7 +139,16 @@ export function VenuesPage() {
   }
 
   return (
-    <section className="page">
+    <section className={mapView ? 'page page-map' : 'page'}>
+      {mapView && venues && (
+        <div className="venue-map-screen">
+          <VenueMap venues={venues} places={app.familyPlaces} manage={manage} onMove={(venue, lat, lng) => void moveVenue(venue, lat, lng)} />
+          {error && <p className="form-error map-banner" role="alert">{error}</p>}
+        </div>
+      )}
+      {mapView && venues === null && <p className="hint">{loadError ?? 'טוען אולמות…'}</p>}
+      {!mapView && (
+        <>
       <header className="page-header">
         <div>
           <h1>אולמות</h1>
@@ -151,13 +161,6 @@ export function VenuesPage() {
         <p className="hint">טוען אולמות…</p>
       ) : (
         <>
-          <VenueMap venues={venues} places={app.familyPlaces} manage={manage} onMove={(venue, lat, lng) => void moveVenue(venue, lat, lng)} />
-          {manage && venues.some((venue) => venue.lat != null) && (
-            <p className="hint">אפשר לגרור נקודה של אולם אם היא לא במקום הנכון. הערים המסומנות הן מקום המגורים של המשפחה.</p>
-          )}
-          {app.familyPlaces.length === 0 && (
-            <p className="hint">בהגדרות אפשר לסמן מאיפה המשפחה מגיעה, למשל קרית גת וראש העין, ולראות את המרחק מכל אולם.</p>
-          )}
           <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
             <FilterChip active={status === 'all'} count={counts.get('all') ?? 0} onClick={() => setStatus('all')}>הכל</FilterChip>
             {VENUE_STATUSES.map((item) => (
@@ -203,7 +206,13 @@ export function VenuesPage() {
           )}
         </>
       )}
-      {manage && <Fab label="הוספת אולם" onClick={() => setEditing('new')} />}
+        </>
+      )}
+      <button type="button" className="map-fab" aria-pressed={mapView} onClick={() => setMapView((current) => !current)}>
+        {mapView ? <ListIcon /> : <MapIcon />}
+        <span>{mapView ? 'רשימה' : 'תצוגת מפה'}</span>
+      </button>
+      {manage && !mapView && <Fab label="הוספת אולם" onClick={() => setEditing('new')} />}
       <Dialog open={deleting !== null} title="מחיקת אולם" onClose={() => setDeleting(null)}>
         {deleting && (
           <div className="stack-form">
@@ -516,6 +525,14 @@ function formatVisit(value: string): string {
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
+}
+
+function MapIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5 9 4l6 2.5L20 4v13.5L15 20l-6-2.5L4 20z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><path d="M9 4v13.5M15 6.5V20" fill="none" stroke="currentColor" strokeWidth="1.8" /></svg>
+}
+
+function ListIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h11M8 12h11M8 17h11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><circle cx="4.5" cy="7" r="1.2" fill="currentColor" /><circle cx="4.5" cy="12" r="1.2" fill="currentColor" /><circle cx="4.5" cy="17" r="1.2" fill="currentColor" /></svg>
 }
 
 function TikTokIcon() {

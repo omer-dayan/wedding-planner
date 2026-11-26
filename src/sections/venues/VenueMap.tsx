@@ -36,6 +36,7 @@ export function VenueMap({
       maxZoom: 18,
     }).addTo(map)
     mapRef.current = map
+    requestAnimationFrame(() => map.invalidateSize())
     return () => {
       map.remove()
       mapRef.current = null
@@ -81,7 +82,13 @@ export function VenueMap({
       })
       marker.addTo(layer)
     }
-    if (bounds.length > 0) map.fitBounds(L.latLngBounds(bounds), { padding: [36, 36], maxZoom: 11 })
+    if (bounds.length > 0) {
+      map.fitBounds(L.latLngBounds(bounds), {
+        paddingTopLeft: [24, 96],
+        paddingBottomRight: [24, 140],
+        maxZoom: 11,
+      })
+    }
     map.invalidateSize()
     return () => { layer.remove() }
   }, [venues, places, manage, onMove])
