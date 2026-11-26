@@ -446,7 +446,7 @@ textarea { min-height: 88px; resize: vertical; }
   padding: 0;
   background: transparent;
   width: min(560px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
 }
 
 .dialog::backdrop { background: rgba(28, 51, 40, 0.46); }
@@ -455,9 +455,11 @@ textarea { min-height: 88px; resize: vertical; }
   background: var(--surface);
   border-radius: 24px;
   box-shadow: var(--shadow);
-  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .dialog-head, .dialog-body { padding: 16px 18px; }
@@ -466,11 +468,37 @@ textarea { min-height: 88px; resize: vertical; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex: none;
   border-bottom: 1px solid var(--line);
   padding-top: calc(16px + env(safe-area-inset-top));
 }
 
-.dialog-body { overflow: auto; }
+.dialog-body {
+  overflow: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.dialog-body:has(.dialog-fields) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dialog-body:has(.dialog-fields) > .stack-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.dialog-fields {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dialog-body .form-actions { flex: none; }
 
 .icon-button {
   border: 0;
@@ -714,7 +742,7 @@ textarea { min-height: 88px; resize: vertical; }
     width: 100vw;
     max-width: 100vw;
     height: auto;
-    max-height: min(92vh, 920px);
+    max-height: min(92dvh, 920px);
     margin: 0;
     position: fixed;
     inset-inline: 0;
@@ -725,7 +753,8 @@ textarea { min-height: 88px; resize: vertical; }
   .dialog-card {
     border-radius: 22px 22px 0 0;
     min-height: 0;
-    max-height: min(92vh, 920px);
+    max-height: min(92dvh, 920px);
+    overflow: hidden;
     padding-bottom: env(safe-area-inset-bottom);
   }
 

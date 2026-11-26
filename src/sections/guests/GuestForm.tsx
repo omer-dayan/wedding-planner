@@ -72,6 +72,7 @@ export function GuestForm({
 
   return (
     <form className="stack-form" onSubmit={(event) => void handleSubmit(event)}>
+      <div className="dialog-fields">
       {guest?.partySizeAssumed && (
         <p className="hint">בגיליון לא צוין מספר אנשים, והונח 1. שמירה תאשר את המספר שמופיע כאן.</p>
       )}
@@ -183,6 +184,7 @@ export function GuestForm({
           {error}
         </p>
       )}
+      </div>
       <div className="form-actions">
         {onDelete && (
           <button type="button" className="btn btn-danger" onClick={onDelete} disabled={saving}>

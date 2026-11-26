@@ -19,15 +19,27 @@ export function Dialog({
     const element = ref.current
     if (!element) return
     if (open && !element.open) element.showModal()
-    if (!open && element.open) element.close()
+    if (!open && element.open) {
+      element.dataset.programmaticClose = 'true'
+      element.close()
+    }
   }, [open])
+
+  function handleClose() {
+    const element = ref.current
+    if (element?.dataset.programmaticClose === 'true') {
+      delete element.dataset.programmaticClose
+      return
+    }
+    onClose()
+  }
 
   return (
     <dialog
       ref={ref}
       className="dialog"
       aria-labelledby={titleId}
-      onClose={onClose}
+      onClose={handleClose}
       onClick={(event) => {
         if (event.target === ref.current) onClose()
       }}
