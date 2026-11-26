@@ -6,7 +6,7 @@ import { CATEGORY_LABELS, RSVP_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../
 import { assignedRole, canEditGuest, isCoupleOrOwner, placementForRole } from '../../domain/roles.ts'
 import { EMPTY_QUERY, queryGuests } from '../../domain/query.ts'
 import type { GuestQuery } from '../../domain/query.ts'
-import { RSVP_STATUSES, SIDES, SUB_SIDES } from '../../domain/types.ts'
+import { RSVP_STATUSES } from '../../domain/types.ts'
 import type { Guest, GuestDraft } from '../../domain/types.ts'
 import { summarizeGuests } from '../../domain/stats.ts'
 import { Dialog } from '../../ui/Dialog.tsx'
@@ -60,7 +60,11 @@ export function GuestListPage() {
   const placement = placementForRole(assignedRole(app.wedding, viewerEmail))
   const canReclassify = isCoupleOrOwner(app.wedding, viewerEmail)
   const categoryTrail = query.category === 'all' ? [] : ancestorChain(app.guestCategories, query.category)
-  const categoryChoices = childrenOf(app.guestCategories, query.category === 'all' ? '' : query.category)
+  const categoryLevels = [childrenOf(app.guestCategories, '')]
+  for (const category of categoryTrail) {
+    const children = childrenOf(app.guestCategories, category.id)
+    if (children.length > 0) categoryLevels.push(children)
+  }
 
   async function saveGuest(draft: GuestDraft) {
     setSaving(true)
@@ -145,38 +149,31 @@ export function GuestListPage() {
                 placeholder="חיפוש לפי שם, טלפון או הערה"
               />
             </label>
-            <div className="chip-row" role="tablist" aria-label="סינון לפי קירבה">
-              <button type="button" className={query.subSide === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.subSide === 'all'} onClick={() => setQuery({ ...query, subSide: 'all' })}>הכל</button>
-              {SUB_SIDES.map((item) => (
-                <button key={item} type="button" className={query.subSide === item ? 'chip chip-on' : 'chip'} aria-pressed={query.subSide === item} onClick={() => setQuery({ ...query, subSide: item })}>
-                  {SUB_SIDE_LABELS[item]}
-                </button>
-              ))}
-            </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי צד">
               <button type="button" className={query.side === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.side === 'all'} onClick={() => setQuery({ ...query, side: 'all' })}>הכל</button>
-              {SIDES.map((side) => (
+              {(['groom', 'bride'] as const).map((side) => (
                 <button key={side} type="button" className={query.side === side ? 'chip chip-on' : 'chip'} aria-pressed={query.side === side} onClick={() => setQuery({ ...query, side })}>
                   {sideLabel(side)}
                 </button>
               ))}
-              <button type="button" className={query.side === 'unspecified' ? 'chip chip-on' : 'chip'} aria-pressed={query.side === 'unspecified'} onClick={() => setQuery({ ...query, side: 'unspecified' })}>לא צוין</button>
             </div>
-            <div className="chip-row" role="tablist" aria-label="סינון לפי קטגוריה">
-              <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
-              {categoryTrail.map((category) => (
-                <button key={category.id} type="button" className={query.category === category.id ? 'chip chip-on' : 'chip'} aria-pressed={query.category === category.id} onClick={() => setQuery({ ...query, category: category.id })}>
-                  {category.label}
-                </button>
+            <div className="category-filters">
+              {categoryLevels.map((level, index) => (
+                <div key={level.map((category) => category.id).join('-') || 'roots'} className="chip-row" role="tablist" aria-label={index === 0 ? 'סינון לפי קטגוריה' : 'תת-קטגוריות'}>
+                  {index === 0 && (
+                    <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
+                  )}
+                  {level.map((category) => {
+                    const selected = query.category === category.id || categoryTrail.some((item) => item.id === category.id)
+                    const people = (guests ?? []).filter((guest) => subtreeIds(app.guestCategories, category.id).includes(guest.categoryId)).reduce((sum, guest) => sum + guest.partySize, 0)
+                    return (
+                      <button key={category.id} type="button" className={selected ? 'chip chip-on' : 'chip'} aria-pressed={selected} onClick={() => setQuery({ ...query, category: category.id })}>
+                        {category.label} {people}
+                      </button>
+                    )
+                  })}
+                </div>
               ))}
-              {categoryChoices.map((category) => {
-                const people = (guests ?? []).filter((guest) => subtreeIds(app.guestCategories, category.id).includes(guest.categoryId)).reduce((sum, guest) => sum + guest.partySize, 0)
-                return (
-                  <button key={category.id} type="button" className="chip" aria-pressed={false} onClick={() => setQuery({ ...query, category: category.id })}>
-                    {category.label} {people}
-                  </button>
-                )
-              })}
             </div>
             <div className="chip-row" role="tablist" aria-label="סינון לפי סטטוס">
               <button type="button" className={query.rsvp === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.rsvp === 'all'} onClick={() => setQuery({ ...query, rsvp: 'all' })}>הכל</button>

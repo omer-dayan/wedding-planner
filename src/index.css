@@ -946,7 +946,8 @@ textarea { min-height: 88px; resize: vertical; }
 }
 .account-email { color: var(--muted); padding: 4px 12px 8px; font-size: 0.92rem; word-break: break-all; }
 .chip-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 8px; margin-top: 12px; }
-.toolbar .chip-row { grid-column: 1 / -1; margin-top: 0; }
+.toolbar .chip-row, .toolbar .category-filters { grid-column: 1 / -1; margin-top: 0; }
+.category-filters { display: grid; gap: 8px; }
 .chip {
   flex: none;
   min-height: 44px;
