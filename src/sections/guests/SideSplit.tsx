@@ -1,23 +1,22 @@
-import type { GuestCategory } from '../../domain/guestCategories.ts'
 import { sideLabel } from '../../domain/labels.ts'
 import { pieSlices } from '../../domain/stats.ts'
 import type { Guest } from '../../domain/types.ts'
 
-export function SideSplit({ guests, categories = [] }: { guests: readonly Guest[]; categories?: readonly GuestCategory[] }) {
-  const slices = pieSlices(guests, categories)
+export function SideSplit({ guests }: { guests: readonly Guest[] }) {
+  const slices = pieSlices(guests)
   const total = slices.reduce((sum, slice) => sum + slice.people, 0)
   if (total === 0) return null
   const radius = 15.9
   const circumference = 2 * Math.PI * radius
   let offset = 0
-  const groomPeople = slices.filter((slice) => slice.side === 'groom').reduce((sum, slice) => sum + slice.people, 0)
-  const bridePeople = total - groomPeople
+  const groomPeople = slices.find((slice) => slice.side === 'groom')?.people ?? 0
+  const bridePeople = slices.find((slice) => slice.side === 'bride')?.people ?? 0
 
   return (
     <section className="side-panel side-pie-panel" aria-label="פילוח חתן וכלה">
       <h2>חתן וכלה</h2>
       <div className="side-pie-layout">
-        <svg className="side-pie" viewBox="0 0 42 42" role="img" aria-label={slices.map((slice) => `${sideLabel(slice.side)} ${slice.label} ${slice.people}`).join(', ')}>
+        <svg className="side-pie" viewBox="0 0 42 42" role="img" aria-label={`${sideLabel('groom')} ${groomPeople}, ${sideLabel('bride')} ${bridePeople}`}>
           {slices.map((slice) => {
             const length = (slice.people / total) * circumference
             const dash = `${length} ${circumference - length}`
@@ -49,12 +48,6 @@ export function SideSplit({ guests, categories = [] }: { guests: readonly Guest[
             {sideLabel('bride')}
             <strong>{Math.round((bridePeople / total) * 100)}%</strong>
           </li>
-          {slices.map((slice) => (
-            <li key={slice.key}>
-              <span className="swatch" style={{ background: slice.color }} aria-hidden="true" />
-              {sideLabel(slice.side)} · {slice.label}
-            </li>
-          ))}
         </ul>
       </div>
     </section>

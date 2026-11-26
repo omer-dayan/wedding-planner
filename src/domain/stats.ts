@@ -64,28 +64,17 @@ export interface PieSlice {
   color: string
 }
 
-const SIDE_HUE = { groom: 152, bride: 12 } as const
+const SIDE_COLOR = { groom: 'hsl(152 28% 34%)', bride: 'hsl(12 42% 52%)' } as const
 
 export function pieSlices(
   guests: readonly Pick<Guest, 'side' | 'partySize' | 'group' | 'category' | 'categoryId'>[],
   categories: readonly GuestCategory[] = [],
 ): PieSlice[] {
-  return sideSlices(guests, categories).flatMap((slice) => {
-    const count = Math.max(slice.groups.length, 1)
-    return slice.groups.map((group, index) => ({
-      key: `${slice.side}:${group.label}`,
-      label: group.label,
-      side: slice.side,
-      people: group.people,
-      color: shade(SIDE_HUE[slice.side], count, index),
-    }))
-  }).filter((slice) => slice.people > 0)
-}
-
-function shade(hue: number, count: number, index: number): string {
-  const lightness = 28 + (index * 36) / count
-  const saturation = hue === SIDE_HUE.bride ? 42 : 28
-  return `hsl(${hue} ${saturation}% ${lightness}%)`
+  return sideSlices(guests, categories).flatMap((slice) => (
+    slice.people > 0
+      ? [{ key: slice.side, label: slice.side, side: slice.side, people: slice.people, color: SIDE_COLOR[slice.side] }]
+      : []
+  ))
 }
 
 export function sideSlices(

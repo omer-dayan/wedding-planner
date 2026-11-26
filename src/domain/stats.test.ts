@@ -55,16 +55,15 @@ describe('summarizeGuests', () => {
     expect(slices[1].people).toBe(3)
   })
 
-  it('gives one side similar pie colors and the other side a different family', () => {
+  it('draws the pie as groom versus bride only', () => {
     const slices = pieSlices([
       makeGuest({ side: 'groom', partySize: 2, category: 'family', group: 'משפחה' }),
       makeGuest({ side: 'groom', partySize: 1, category: 'family', group: 'משפחה גרעינית' }),
       makeGuest({ side: 'bride', partySize: 3, category: 'friends', group: 'חברים' }),
     ])
-    expect(slices.map((slice) => slice.label)).toEqual(['משפחה גרעינית', 'משפחה', 'חברים'])
+    expect(slices.map((slice) => slice.side)).toEqual(['groom', 'bride'])
+    expect(slices.map((slice) => slice.people)).toEqual([3, 3])
     expect(slices[0].color.startsWith('hsl(152')).toBe(true)
-    expect(slices[1].color.startsWith('hsl(152')).toBe(true)
-    expect(slices[0].color).not.toBe(slices[1].color)
-    expect(slices[2].color.startsWith('hsl(12')).toBe(true)
+    expect(slices[1].color.startsWith('hsl(12')).toBe(true)
   })
 })

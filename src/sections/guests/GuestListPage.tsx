@@ -139,7 +139,7 @@ export function GuestListPage() {
             </div>
           ) : (
           <>
-          <Summary stats={stats} guests={guests} categories={app.guestCategories} />
+          <Summary stats={stats} guests={guests} />
           <div className="toolbar">
             <label className="field grow">
               <span>חיפוש</span>
