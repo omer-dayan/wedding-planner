@@ -91,9 +91,13 @@ export function canParent(categories: readonly GuestCategory[], id: string, pare
   return !subtreeIds(categories, id).includes(parentId)
 }
 
-export function flattenTree(categories: readonly GuestCategory[], parentId = '', depth = 0): Array<{ category: GuestCategory; depth: number }> {
+export function flattenTree(
+  categories: readonly GuestCategory[],
+  parentId = '',
+  depth = 0,
+): Array<{ category: GuestCategory; depth: number }> {
   const rows: Array<{ category: GuestCategory; depth: number }> = []
-  const siblings = childrenOf(categories, parentId).slice().sort((a, b) => a.label.localeCompare(b.label, 'he'))
+  const siblings = childrenOf(categories, parentId)
   for (const category of siblings) {
     rows.push({ category, depth })
     rows.push(...flattenTree(categories, category.id, depth + 1))
