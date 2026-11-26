@@ -4,6 +4,7 @@ import { SideSplit } from './SideSplit.tsx'
 
 const CARDS = [
   ['total', 'סה״כ מוזמנים', 'הזמנות'],
+  ['drinkers', 'שותים', 'אלכוהול, בלי מי שלא מגיע'],
   ['attending', 'מגיעים', 'אישרו הגעה'],
   ['declined', 'לא מגיעים', 'לא יגיעו'],
   ['pending', 'ממתינים', 'עדיין בלי תשובה'],
@@ -13,6 +14,7 @@ const CARDS = [
 export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: readonly Guest[] }) {
   const values = {
     total: stats.overall.people,
+    drinkers: stats.overall.drinkers,
     attending: stats.overall.attending,
     declined: stats.overall.declined,
     pending: stats.overall.pending,

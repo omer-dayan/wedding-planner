@@ -108,6 +108,7 @@ export function ContactsImportDialog({
         group: '',
         partySize: 1,
         childCount: 0,
+        drinkerCount: 0,
         partySizeAssumed: false,
         rsvp: 'pending',
         notes: '',

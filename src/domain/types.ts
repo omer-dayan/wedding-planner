@@ -25,6 +25,8 @@ export interface GuestDraft {
   partySize: number
   /** Children arriving with this guest, in addition to partySize. */
   childCount: number
+  /** How many of the party drink alcohol. Cannot exceed partySize. */
+  drinkerCount: number
   partySizeAssumed: boolean
   rsvp: RsvpStatus
   notes: string

@@ -225,6 +225,7 @@ export function GuestListPage() {
                       <th>קטגוריה</th>
                       <th>אנשים</th>
                       <th>ילדים</th>
+                      <th>שותים</th>
                       <th>סטטוס</th>
                       <th>פעולות</th>
                     </tr>
@@ -245,6 +246,7 @@ export function GuestListPage() {
                           {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
                         </td>
                         <td>{guest.childCount}</td>
+                        <td>{guest.drinkerCount}</td>
                         <td><span className={`badge badge-${guest.rsvp}`}>{RSVP_LABELS[guest.rsvp]}</span></td>
                         <td className="row-actions">
                           {canEditGuest(app.wedding, viewerEmail, guest) && (
@@ -281,6 +283,7 @@ export function GuestListPage() {
                       <span className="ltr-inline" dir="ltr">{guest.phone || 'בלי טלפון'}</span>
                       <span>{guest.partySize} אנשים</span>
                       <span>{guest.childCount} ילדים</span>
+                      <span>{guest.drinkerCount} שותים</span>
                       {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
                     </p>
                     {guest.notes && <p className="cell-note">{guest.notes}</p>}

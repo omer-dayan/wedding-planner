@@ -6,6 +6,7 @@ export interface StatusCounts {
   records: number
   people: number
   children: number
+  drinkers: number
   attending: number
   declined: number
   pending: number
@@ -25,6 +26,7 @@ export function emptyCounts(): StatusCounts {
     records: 0,
     people: 0,
     children: 0,
+    drinkers: 0,
     attending: 0,
     declined: 0,
     pending: 0,
@@ -107,6 +109,7 @@ function addCounts(bucket: StatusCounts, guest: Guest) {
   bucket.records += 1
   bucket.people += guest.partySize
   bucket.children += guest.childCount
+  if (guest.rsvp !== 'declined') bucket.drinkers += guest.drinkerCount
   bucket[guest.rsvp satisfies RsvpStatus] += guest.partySize
   if (guest.partySizeAssumed) bucket.assumedRecords += 1
 }

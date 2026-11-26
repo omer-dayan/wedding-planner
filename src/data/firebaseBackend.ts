@@ -453,6 +453,7 @@ function guestToDoc(guest: Guest): Record<string, string | number | boolean | nu
     group: guest.group,
     partySize: guest.partySize,
     childCount: guest.childCount,
+    drinkerCount: guest.drinkerCount,
     partySizeAssumed: guest.partySizeAssumed,
     rsvp: guest.rsvp,
     notes: guest.notes,

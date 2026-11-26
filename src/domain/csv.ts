@@ -11,6 +11,7 @@ export const APP_CSV_HEADERS = [
   'קבוצה',
   'מספר אנשים',
   'ילדים',
+  'שותים',
   'מספר לא צוין',
   'סטטוס הגעה',
   'הערות',
@@ -25,6 +26,7 @@ type CsvField =
   | 'group'
   | 'partySize'
   | 'childCount'
+  | 'drinkerCount'
   | 'partySizeAssumed'
   | 'rsvp'
   | 'notes'
@@ -48,6 +50,8 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   count: 'partySize',
   ילדים: 'childCount',
   children: 'childCount',
+  שותים: 'drinkerCount',
+  drinkers: 'drinkerCount',
   'מספר לא צוין': 'partySizeAssumed',
   'סטטוס הגעה': 'rsvp',
   rsvp: 'rsvp',
@@ -108,6 +112,7 @@ export function guestsToAppCsv(guests: readonly Guest[]): string {
       guest.group,
       String(guest.partySize),
       String(guest.childCount),
+      String(guest.drinkerCount),
       guest.partySizeAssumed ? 'כן' : 'לא',
       RSVP_LABELS[guest.rsvp],
       guest.notes,
@@ -157,6 +162,11 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       errors.push({ line, code: 'child-count' })
       return
     }
+    const drinkerCount = parseChildCount(columns.has('drinkerCount') ? cell('drinkerCount') : '')
+    if (drinkerCount === null || drinkerCount > partySize) {
+      errors.push({ line, code: 'drinker-count' })
+      return
+    }
 
     const sideCell = cell('side')
     const side = SIDE_FROM_LABEL.get(sideCell)
@@ -181,6 +191,7 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       group: cell('group'),
       partySize,
       childCount,
+      drinkerCount,
       partySizeAssumed: parseYes(cell('partySizeAssumed')),
       rsvp,
       notes: columns.has('notes') ? (row[columns.get('notes') as number] ?? '').trim() : '',

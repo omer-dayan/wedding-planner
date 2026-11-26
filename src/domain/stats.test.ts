@@ -36,6 +36,11 @@ describe('summarizeGuests', () => {
     expect(stats.overall.people).toBe(5)
     expect(stats.overall.children).toBe(2)
     expect(stats.overall.attending).toBe(4)
+    const drinking = summarizeGuests([
+      makeGuest({ partySize: 2, drinkerCount: 1, rsvp: 'attending' }),
+      makeGuest({ partySize: 2, drinkerCount: 2, rsvp: 'declined' }),
+    ])
+    expect(drinking.overall.drinkers).toBe(1)
   })
 
   it('groups people on each side for the visual split', () => {

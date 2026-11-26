@@ -35,6 +35,7 @@ export function GuestForm({
   const [categoryId, setCategoryId] = useState(guest?.categoryId ?? '')
   const [partySize, setPartySize] = useState(String(guest?.partySize ?? 1))
   const [childCount, setChildCount] = useState(String(guest?.childCount ?? 0))
+  const [drinkerCount, setDrinkerCount] = useState(String(guest?.drinkerCount ?? 0))
   const [rsvp, setRsvp] = useState<RsvpStatus>(guest?.rsvp ?? 'pending')
   const [notes, setNotes] = useState(guest?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
@@ -45,6 +46,7 @@ export function GuestForm({
     event.preventDefault()
     const parsedSize = Number(partySize)
     const parsedChildren = Number(childCount)
+    const parsedDrinkers = Number(drinkerCount)
     try {
       const draft = normalizeDraft({
         fullName,
@@ -57,6 +59,7 @@ export function GuestForm({
         group: categories.find((item) => item.id === categoryId)?.label ?? '',
         partySize: parsedSize,
         childCount: parsedChildren,
+        drinkerCount: parsedDrinkers,
         partySizeAssumed: false,
         rsvp,
         notes,
@@ -128,10 +131,25 @@ export function GuestForm({
         <span>מספר אנשים (כולל מלווים)</span>
         <input
           value={partySize}
-          onChange={(event) => setPartySize(event.target.value)}
+          onChange={(event) => {
+            setPartySize(event.target.value)
+            const next = Number(event.target.value)
+            if (Number.isInteger(next) && Number(drinkerCount) > next) setDrinkerCount(String(Math.max(next, 0)))
+          }}
           inputMode="numeric"
           min={1}
           max={100}
+          type="number"
+        />
+      </label>
+      <label className="field">
+        <span>שותי אלכוהול</span>
+        <input
+          value={drinkerCount}
+          onChange={(event) => setDrinkerCount(event.target.value)}
+          inputMode="numeric"
+          min={0}
+          max={Number(partySize) || 1}
           type="number"
         />
       </label>
