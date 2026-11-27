@@ -1,3 +1,4 @@
+import type { BlockedDate } from './blockedDates.ts'
 import { DomainError } from './errors.ts'
 import type { WeddingRoleId } from './roles.ts'
 import type { FamilyPlace } from './geo.ts'
@@ -15,6 +16,7 @@ export interface Wedding {
   venueQuestions: VenueQuestion[]
   guestCategories: GuestCategory[]
   familyPlaces: FamilyPlace[]
+  blockedDates: BlockedDate[]
   palette: PaletteChoice | null
   createdAt: string
   updatedAt: string

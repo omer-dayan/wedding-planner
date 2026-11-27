@@ -5,7 +5,6 @@ import {
   canManageVenues,
   compareVenues,
   createVenueOffer,
-  MONTHS,
   normalizeTikTokUrl,
   normalizeVenue,
   offerTitle,
@@ -15,7 +14,6 @@ import {
   VENUE_STATUSES,
   venueStatusLabel,
   venueVideoQuery,
-  WEEKDAYS,
   type Venue,
   type VenueDraft,
   type VenueOffer,
@@ -24,6 +22,8 @@ import {
 import { formatPortionPrice, formatTotalPrice, portionQuote } from '../../domain/venuePrice.ts'
 import { distanceKm, formatDistance, type FamilyPlace } from '../../domain/geo.ts'
 import { geocodeInIsrael } from '../../data/geocode.ts'
+import { blockedOn, type BlockedDate } from '../../domain/blockedDates.ts'
+import { BlockedDatesPanel } from './BlockedDatesPanel.tsx'
 import { VenueMap } from './VenueMap.tsx'
 import { summarizeGuests } from '../../domain/stats.ts'
 import type { VenueQuestion } from '../../domain/venueQuestions.ts'
@@ -45,6 +45,7 @@ export function VenuesPage() {
   const [deleting, setDeleting] = useState<Venue | null>(null)
   const [guestCount, setGuestCount] = useState(0)
   const [mapView, setMapView] = useState(false)
+  const [datesView, setDatesView] = useState(false)
   const [placingId, setPlacingId] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ lat: number; lng: number } | null>(null)
   const manage = canManageVenues(app.wedding, app.user?.email ?? null)
@@ -162,6 +163,14 @@ export function VenuesPage() {
 
   return (
     <section className={mapView ? 'page page-map' : 'page'}>
+      {datesView && (
+        <BlockedDatesPanel
+          dates={app.blockedDates}
+          manage={manage}
+          onSave={app.onSetBlockedDates}
+          onBack={() => setDatesView(false)}
+        />
+      )}
       {mapView && venues && (
         <div className="venue-map-screen">
           <VenueMap
@@ -195,12 +204,15 @@ export function VenuesPage() {
         </div>
       )}
       {mapView && venues === null && <p className="hint">{loadError ?? 'טוען אולמות…'}</p>}
-      {!mapView && (
+      {!mapView && !datesView && (
         <>
       <header className="page-header">
         <div>
           <h1>אולמות</h1>
         </div>
+        <button type="button" className="btn btn-ghost" onClick={() => setDatesView(true)}>
+          תאריכים חסומים{app.blockedDates.length > 0 ? ` (${app.blockedDates.length})` : ''}
+        </button>
       </header>
       {loadError && <p className="form-error" role="alert">{loadError}</p>}
       {error && !editing && <p className="form-error" role="alert">{error}</p>}
@@ -235,6 +247,7 @@ export function VenuesPage() {
                   questions={app.venueQuestions}
                   places={app.familyPlaces}
                   guestCount={guestCount}
+                  blockedDates={app.blockedDates}
                   manage={manage}
                   picking={picking === venue.id}
                   onToggleStatus={() => setPicking((current) => current === venue.id ? null : venue.id)}
@@ -257,14 +270,14 @@ export function VenuesPage() {
       )}
         </>
       )}
-      <button type="button" className="map-fab" aria-pressed={mapView} onClick={() => {
+      {!datesView && <button type="button" className="map-fab" aria-pressed={mapView} onClick={() => {
         setMapView((current) => !current)
         setPlacingId(null)
       }}>
         {mapView ? <ListIcon /> : <MapIcon />}
         <span>{mapView ? 'רשימה' : 'תצוגת מפה'}</span>
-      </button>
-      {manage && !mapView && <Fab label="הוספת אולם" onClick={() => setEditing('new')} />}
+      </button>}
+      {manage && !mapView && !datesView && <Fab label="הוספת אולם" onClick={() => setEditing('new')} />}
       <Dialog open={deleting !== null} title="מחיקת אולם" onClose={() => setDeleting(null)}>
         {deleting && (
           <div className="stack-form">
@@ -296,6 +309,7 @@ function VenueCard({
   questions,
   places,
   guestCount,
+  blockedDates,
   manage,
   picking,
   onToggleStatus,
@@ -309,6 +323,7 @@ function VenueCard({
   questions: readonly VenueQuestion[]
   places: readonly FamilyPlace[]
   guestCount: number
+  blockedDates: readonly BlockedDate[]
   manage: boolean
   picking: boolean
   onToggleStatus: () => void
@@ -325,6 +340,7 @@ function VenueCard({
   const quotes = venue.offers
     .map((offer) => portionQuote(questions, offer.answers, guestCount))
     .filter((quote) => quote !== null)
+  const blockedOffers = venue.offers.filter((offer) => blockedOn(blockedDates, offer.date)).length
   const best = quotes.slice().sort((left, right) => left.amount - right.amount)[0]
 
   function toggle() {
@@ -412,32 +428,23 @@ function VenueCard({
             {offers.length === 0 && <p className="hint">עדיין אין הצעות לאולם הזה.</p>}
             {offers.map((offer) => {
               const quote = portionQuote(questions, offer.answers, guestCount)
+              const blocked = blockedOn(blockedDates, offer.date)
               return (
-                <article key={offer.id} className="venue-offer">
-                  <div className="venue-offer-when">
-                    <label className="field">
-                      <span>יום</span>
-                      <select
-                        value={offer.weekday}
-                        disabled={!manage}
-                        onChange={(event) => updateOffer(offer.id, { weekday: event.target.value as VenueOffer['weekday'] })}
-                      >
-                        <option value="">בחרו יום</option>
-                        {WEEKDAYS.map((day) => <option key={day.id} value={day.id}>{day.label}</option>)}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>חודש</span>
-                      <select
-                        value={offer.month || ''}
-                        disabled={!manage}
-                        onChange={(event) => updateOffer(offer.id, { month: Number(event.target.value) })}
-                      >
-                        <option value="">בחרו חודש</option>
-                        {MONTHS.map((month) => <option key={month.id} value={month.id}>{month.label}</option>)}
-                      </select>
-                    </label>
-                  </div>
+                <article key={offer.id} className={blocked ? 'venue-offer venue-offer-blocked' : 'venue-offer'}>
+                  <label className="field">
+                    <span>תאריך החתונה בהצעה</span>
+                    <input
+                      type="date"
+                      value={offer.date}
+                      disabled={!manage}
+                      onChange={(event) => updateOffer(offer.id, { date: event.target.value })}
+                    />
+                  </label>
+                  {blocked && (
+                    <p className="venue-offer-warning" role="alert">
+                      התאריך הזה חסום{blocked.reason ? `: ${blocked.reason}` : ''}
+                    </p>
+                  )}
                   <h3>{offerTitle(offer)}</h3>
                   {questions.map((question) => (
                     <QuestionField
@@ -477,7 +484,12 @@ function VenueCard({
         ) : (
           <button type="button" className="venue-summary" onClick={toggle}>
             <strong>{best ? (quotes.length > 1 ? `מ־${formatPortionPrice(best.amount)}` : formatPortionPrice(best.amount)) : 'אין עדיין הצעה'}</strong>
-            {venue.offers.length > 0 && <span>{venue.offers.length === 1 ? offerTitle(venue.offers[0]) : `${venue.offers.length} הצעות`}</span>}
+            {venue.offers.length > 0 && (
+              <span className={blockedOffers > 0 ? 'venue-summary-blocked' : undefined}>
+                {venue.offers.length === 1 ? offerTitle(venue.offers[0]) : `${venue.offers.length} הצעות`}
+                {blockedOffers > 0 && (venue.offers.length === 1 ? ' · תאריך חסום' : ` · ${blockedOffers} בתאריך חסום`)}
+              </span>
+            )}
           </button>
         )}
       </div>

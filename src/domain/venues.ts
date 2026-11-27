@@ -1,5 +1,6 @@
 import { ValidationError } from './errors.ts'
 import { isCoupleOrOwner, type RoleAssignment } from './roles.ts'
+import { formatDateHe, isRealDate } from './blockedDates.ts'
 import { sanitizeAnswers } from './venueQuestions.ts'
 
 export const VENUE_STATUSES = [
@@ -41,6 +42,8 @@ export type WeekdayId = (typeof WEEKDAYS)[number]['id']
 
 export interface VenueOffer {
   id: string
+  /** Specific wedding day offered, YYYY-MM-DD. Empty for older offers that only name a month or weekday. */
+  date: string
   month: number
   weekday: WeekdayId | ''
   answers: Record<string, string>
@@ -238,10 +241,11 @@ function readCoordinate(value: number | null, limit: number): number | null {
 }
 
 export function createVenueOffer(): VenueOffer {
-  return { id: `o_${crypto.randomUUID()}`, month: 0, weekday: '', answers: {} }
+  return { id: `o_${crypto.randomUUID()}`, date: '', month: 0, weekday: '', answers: {} }
 }
 
-export function offerTitle(offer: Pick<VenueOffer, 'month' | 'weekday'>): string {
+export function offerTitle(offer: Pick<VenueOffer, 'month' | 'weekday'> & { date?: string }): string {
+  if (offer.date) return formatDateHe(offer.date)
   const day = WEEKDAYS.find((item) => item.id === offer.weekday)?.label
   const month = MONTHS.find((item) => item.id === offer.month)?.label
   if (day && month) return `${day} ב${month}`
@@ -259,13 +263,19 @@ function normalizeOffers(value: unknown, fallbackAnswers: Record<string, string>
     const record = entry as Record<string, unknown>
     const id = typeof record.id === 'string' ? record.id.trim() : ''
     if (!/^[A-Za-z0-9_-]+$/.test(id) || id.length > 80 || seen.has(id)) continue
-    const month = typeof record.month === 'number' && record.month >= 1 && record.month <= 12 ? record.month : 0
-    const weekday = WEEKDAYS.some((item) => item.id === record.weekday) ? record.weekday as WeekdayId : ''
+    const date = typeof record.date === 'string' && isRealDate(record.date.trim()) ? record.date.trim() : ''
+    let month = typeof record.month === 'number' && record.month >= 1 && record.month <= 12 ? record.month : 0
+    let weekday: WeekdayId | '' = WEEKDAYS.some((item) => item.id === record.weekday) ? record.weekday as WeekdayId : ''
+    if (date) {
+      const [year, monthNumber, day] = date.split('-').map(Number)
+      month = monthNumber
+      weekday = WEEKDAYS[new Date(year, monthNumber - 1, day).getDay()].id
+    }
     seen.add(id)
-    offers.push({ id, month, weekday, answers: sanitizeAnswers(record.answers) })
+    offers.push({ id, date, month, weekday, answers: sanitizeAnswers(record.answers) })
   }
   if (offers.length === 0 && Object.keys(fallbackAnswers).length > 0) {
-    offers.push({ id: 'o_current', month: 0, weekday: '', answers: fallbackAnswers })
+    offers.push({ id: 'o_current', date: '', month: 0, weekday: '', answers: fallbackAnswers })
   }
   return offers
 }

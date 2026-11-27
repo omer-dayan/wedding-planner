@@ -49,6 +49,8 @@ import { normalizeVenueQuestions, readVenueQuestions } from '../domain/venueQues
 import type { VenueQuestion } from '../domain/venueQuestions.ts'
 import { normalizeGuestCategories, readGuestCategories } from '../domain/guestCategories.ts'
 import type { GuestCategory } from '../domain/guestCategories.ts'
+import type { BlockedDate } from '../domain/blockedDates.ts'
+import { normalizeBlockedDates, readBlockedDates } from '../domain/blockedDates.ts'
 import { normalizeFamilyPlaces, readFamilyPlaces } from '../domain/geo.ts'
 import type { FamilyPlace } from '../domain/geo.ts'
 import { readPalette, type PaletteChoice } from '../domain/palette.ts'
@@ -70,6 +72,7 @@ export interface WeddingRepository {
   ): Promise<void>
   updateCategories(id: string, categories: readonly GuestCategory[]): Promise<void>
   updatePlaces(id: string, places: readonly FamilyPlace[]): Promise<void>
+  updateBlockedDates(id: string, dates: readonly BlockedDate[]): Promise<void>
   updatePalette(id: string, palette: PaletteChoice | null): Promise<void>
   updateMembers(
     id: string,
@@ -219,6 +222,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         venueQuestions: [],
         guestCategories: [],
         familyPlaces: [],
+        blockedDates: [],
         palette: null,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -261,6 +265,12 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
     async updateCategories(id, categories) {
       await updateDoc(doc(weddings, id), {
         guestCategories: normalizeGuestCategories(categories),
+        updatedAt: new Date().toISOString(),
+      })
+    },
+    async updateBlockedDates(id, dates) {
+      await updateDoc(doc(weddings, id), {
+        blockedDates: normalizeBlockedDates(dates),
         updatedAt: new Date().toISOString(),
       })
     },
@@ -483,6 +493,7 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     venueQuestions: readVenueQuestions(data.venueQuestions),
     guestCategories: readGuestCategories(data.guestCategories),
     familyPlaces: readFamilyPlaces(data.familyPlaces),
+    blockedDates: readBlockedDates(data.blockedDates),
     palette: readPalette(data.palette),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',

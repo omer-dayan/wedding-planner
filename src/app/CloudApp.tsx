@@ -213,9 +213,11 @@ function WeddingSession({
     venueQuestions: wedding.venueQuestions,
     guestCategories: wedding.guestCategories,
     familyPlaces: wedding.familyPlaces,
+    blockedDates: wedding.blockedDates,
     palette: wedding.palette,
     onSetWeddingDate: canEditDate ? (date) => weddingsRepo.updateDate(wedding.id, date) : null,
     onSetGuestCategories: canEditDate ? (categories) => weddingsRepo.updateCategories(wedding.id, categories) : null,
+    onSetBlockedDates: canEditDate ? (dates) => weddingsRepo.updateBlockedDates(wedding.id, dates) : null,
     onSetFamilyPlaces: canEditDate ? (places) => weddingsRepo.updatePlaces(wedding.id, places) : null,
     onSetPalette: canEditDate ? (palette) => weddingsRepo.updatePalette(wedding.id, palette) : null,
     onSetVenueQuestions: canEditDate

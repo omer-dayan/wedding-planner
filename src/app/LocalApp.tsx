@@ -8,6 +8,7 @@ import { createLocalExpenseRepository, EXPENSE_STORAGE_KEY } from '../data/expen
 import { browserStorage } from '../data/storage.ts'
 import type { ActivityActor } from '../domain/activity.ts'
 import { normalizeWeddingDate } from '../domain/members.ts'
+import { normalizeBlockedDates, readBlockedDates, type BlockedDate } from '../domain/blockedDates.ts'
 import { normalizeFamilyPlaces, readFamilyPlaces, type FamilyPlace } from '../domain/geo.ts'
 import { readPalette, type PaletteChoice } from '../domain/palette.ts'
 import { normalizeGuestCategories, readGuestCategories, type GuestCategory } from '../domain/guestCategories.ts'
@@ -20,6 +21,7 @@ const DATE_KEY = 'wedding-planner.weddingDate'
 const QUESTIONS_KEY = 'wedding-planner.venueQuestions'
 const CATEGORIES_KEY = 'wedding-planner.guestCategories'
 const PLACES_KEY = 'wedding-planner.familyPlaces'
+const BLOCKED_KEY = 'wedding-planner.blockedDates'
 const PALETTE_KEY = 'wedding-planner.palette'
 
 const localActor: ActivityActor = { email: '', name: 'מכשיר זה', role: 'groom', photoUrl: '' }
@@ -54,6 +56,13 @@ export function LocalApp() {
       return null
     }
   })
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>(() => {
+    try {
+      return readBlockedDates(JSON.parse(storage.getItem(BLOCKED_KEY) || '[]'))
+    } catch {
+      return []
+    }
+  })
   const [familyPlaces, setFamilyPlaces] = useState<FamilyPlace[]>(() => {
     try {
       return readFamilyPlaces(JSON.parse(storage.getItem(PLACES_KEY) || '[]'))
@@ -77,6 +86,7 @@ export function LocalApp() {
       venueQuestions,
       guestCategories,
       familyPlaces,
+      blockedDates,
       palette,
       onSetWeddingDate: async (date) => {
         const next = normalizeWeddingDate(date)
@@ -93,6 +103,11 @@ export function LocalApp() {
         const next = normalizeGuestCategories(categories)
         storage.setItem(CATEGORIES_KEY, JSON.stringify(next))
         setGuestCategories(next)
+      },
+      onSetBlockedDates: async (dates) => {
+        const next = normalizeBlockedDates(dates)
+        storage.setItem(BLOCKED_KEY, JSON.stringify(next))
+        setBlockedDates(next)
       },
       onSetFamilyPlaces: async (places) => {
         const next = normalizeFamilyPlaces(places)
@@ -112,7 +127,7 @@ export function LocalApp() {
       onSetMemberRole: null,
       onRemoveMember: null,
     }),
-    [activity, activityComments, guests, songs, venues, expenses, storage, weddingDate, venueQuestions, guestCategories, familyPlaces, palette],
+    [activity, activityComments, guests, songs, venues, expenses, storage, weddingDate, venueQuestions, guestCategories, familyPlaces, blockedDates, palette],
   )
 
   return (

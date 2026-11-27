@@ -78,6 +78,7 @@ function venueToDoc(venue: Venue) {
     answers: venue.offers[0]?.answers ?? venue.answers,
     offers: venue.offers.map((offer) => ({
       id: offer.id,
+      date: offer.date,
       month: offer.month,
       weekday: offer.weekday,
       answers: offer.answers,

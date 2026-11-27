@@ -63,7 +63,7 @@ service cloud.firestore {
     }
 
     function validWedding(data) {
-      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'weddingDate', 'venueQuestions', 'guestCategories', 'familyPlaces', 'palette', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'ownerEmail', 'memberEmails', 'memberRoles', 'weddingDate', 'venueQuestions', 'guestCategories', 'familyPlaces', 'blockedDates', 'palette', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['name', 'ownerEmail', 'memberEmails', 'createdAt', 'updatedAt'])
         && data.name is string
         && data.name.size() > 0
@@ -81,11 +81,16 @@ service cloud.firestore {
         && (!data.keys().hasAny(['venueQuestions']) || validQuestions(data.venueQuestions))
         && (!data.keys().hasAny(['guestCategories']) || validGuestCategories(data.guestCategories))
         && (!data.keys().hasAny(['familyPlaces']) || validFamilyPlaces(data.familyPlaces))
+        && (!data.keys().hasAny(['blockedDates']) || validBlockedDates(data.blockedDates))
         && (!data.keys().hasAny(['palette']) || validPalette(data.palette));
     }
 
     function validGuestCategories(list) {
       return list is list;
+    }
+
+    function validBlockedDates(list) {
+      return list is list && list.size() <= 400;
     }
 
     function validFamilyPlaces(list) {
@@ -346,6 +351,11 @@ service cloud.firestore {
           )
           || (
             canModerate(weddingId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blockedDates', 'updatedAt'])
+            && validBlockedDates(request.resource.data.blockedDates)
+          )
+          || (
+            canModerate(weddingId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['palette', 'updatedAt'])
             && validPalette(request.resource.data.palette)
           )
@@ -358,7 +368,7 @@ service cloud.firestore {
               )
               || (
                 canModerate(weddingId)
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'venueQuestions', 'guestCategories', 'familyPlaces', 'palette', 'updatedAt'])
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weddingDate', 'venueQuestions', 'guestCategories', 'familyPlaces', 'blockedDates', 'palette', 'updatedAt'])
               )
             )
           )

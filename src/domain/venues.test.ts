@@ -88,8 +88,21 @@ describe('venues', () => {
       lat: null,
       lng: null,
     })
-    expect(venue.offers).toEqual([{ id: 'o_current', month: 0, weekday: '', answers: { q_plate: '480' } }])
+    expect(venue.offers).toEqual([{ id: 'o_current', date: '', month: 0, weekday: '', answers: { q_plate: '480' } }])
     expect(offerTitle({ month: 1, weekday: 'sunday' })).toBe('יום ראשון בינואר')
     expect(offerTitle({ month: 9, weekday: 'thursday' })).toBe('יום חמישי בספטמבר')
+  })
+
+  it('keeps a specific offer date and derives its month and weekday', () => {
+    const venue = normalizeVenue({
+      name: 'האחוזה', city: '', phone: '', website: '', priceNotes: '', status: 'want', visitDate: '', notes: '',
+      tiktokUrls: [], answers: {}, imageUrl: '', lat: null, lng: null,
+      offers: [
+        { id: 'o_a', date: '2026-09-10', month: 0, weekday: '', answers: {} },
+        { id: 'o_b', date: '2026-02-30', month: 0, weekday: '', answers: {} },
+      ],
+    })
+    expect(venue.offers[0]).toMatchObject({ date: '2026-09-10', month: 9, weekday: 'thursday' })
+    expect(venue.offers[1].date).toBe('')
   })
 })
