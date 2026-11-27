@@ -1,98 +1,31 @@
 import { songAddedInput, songDeletedInput } from '../domain/activity.ts'
-import { DomainError } from '../domain/errors.ts'
-import type { Song, SongDraft } from '../domain/songs.ts'
-import { normalizeSong, parseStoredSong } from '../domain/songs.ts'
+import { normalizeSong, parseStoredSong, type Song, type SongDraft } from '../domain/songs.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
-import { recordActivity, type ActivityLogger } from './activityLog.ts'
+import type { ActivityLogger } from './activityLog.ts'
+import { createRecordRepository, localStore, type RecordRepository, type RecordSpec } from './records.ts'
 import type { KeyValueStorage } from './storage.ts'
 
 export const SONG_STORAGE_KEY = 'wedding-planner.songs.v1'
 
-export interface SongAuthor {
+export interface Author {
   email: string
   name: string
   role: WeddingRoleId | null
 }
 
-export interface SongRepository {
-  subscribe(listener: (songs: Song[]) => void, onError?: (error: unknown) => void): () => void
-  create(draft: SongDraft, author: SongAuthor): Promise<Song>
-  update(id: string, draft: SongDraft): Promise<Song>
-  remove(id: string): Promise<void>
+export type SongRepository = RecordRepository<Song, SongDraft, Author>
+
+export const songSpec: RecordSpec<Song, SongDraft, Author> = {
+  normalize: normalizeSong,
+  author: (author) => ({
+    addedByEmail: author.email.trim().toLowerCase(),
+    addedByName: author.name.trim() || author.email || 'מכשיר זה',
+    addedByRole: author.role,
+  }),
+  created: (song) => [songAddedInput(song)],
+  removed: (song) => [songDeletedInput(song)],
 }
 
 export function createLocalSongRepository(storage: KeyValueStorage, key = SONG_STORAGE_KEY, logger?: ActivityLogger): SongRepository {
-  const listeners = new Set<(songs: Song[]) => void>()
-  let songs = readSongs(storage, key)
-
-  function persist(next: Song[]) {
-    try {
-      storage.setItem(key, JSON.stringify(next))
-    } catch {
-      throw new DomainError('storage-full')
-    }
-    songs = next
-    for (const listener of listeners) listener(songs)
-  }
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (event) => {
-      if (event.key !== key) return
-      songs = readSongs(storage, key)
-      for (const listener of listeners) listener(songs)
-    })
-  }
-
-  return {
-    subscribe(listener) {
-      listener(songs)
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    async create(draft, author) {
-      const normalized = normalizeSong(draft)
-      const timestamp = new Date().toISOString()
-      const song: Song = {
-        id: crypto.randomUUID(),
-        ...normalized,
-        addedByEmail: author.email.trim().toLowerCase(),
-        addedByName: author.name.trim() || 'מכשיר זה',
-        addedByRole: author.role,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }
-      persist([...songs, song])
-      recordActivity(logger, [songAddedInput(song)])
-      return song
-    },
-    async update(id, draft) {
-      const normalized = normalizeSong(draft)
-      const current = songs.find((song) => song.id === id)
-      if (!current) throw new DomainError('not-found')
-      const song: Song = { ...current, ...normalized, updatedAt: new Date().toISOString() }
-      persist(songs.map((item) => (item.id === id ? song : item)))
-      return song
-    },
-    async remove(id) {
-      const current = songs.find((song) => song.id === id)
-      if (!current) throw new DomainError('not-found')
-      persist(songs.filter((song) => song.id !== id))
-      recordActivity(logger, [songDeletedInput(current)])
-    },
-  }
-}
-
-function readSongs(storage: KeyValueStorage, key: string): Song[] {
-  const raw = storage.getItem(key)
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.flatMap((entry) => {
-      const song = parseStoredSong(entry)
-      return song ? [song] : []
-    })
-  } catch {
-    return []
-  }
+  return createRecordRepository(localStore(storage, key, parseStoredSong, logger), songSpec)
 }

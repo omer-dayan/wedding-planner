@@ -10,8 +10,8 @@ import {
   type Firestore,
   type WriteBatch,
 } from 'firebase/firestore'
-import { emptyDetails, isActivityType, type ActivityActor, type ActivityEvent, type ActivityInput } from '../domain/activity.ts'
-import { isWeddingRole } from '../domain/roles.ts'
+import { emptyDetails, parseActivityEvent, type ActivityActor, type ActivityEvent, type ActivityInput } from '../domain/activity.ts'
+import { timestampToIso } from './firestoreListeners.ts'
 import { ACTIVITY_PAGE_SIZE, type ActivityRepository } from './activityLog.ts'
 
 export function createFirestoreActivityRepository(
@@ -37,7 +37,7 @@ export function createFirestoreActivityRepository(
     const page = query(activity, orderBy('createdAt', 'desc'), limit(shown))
     stop = onSnapshot(
       page,
-      (snapshot) => publish(snapshot.docs.flatMap((entry) => parseActivity(entry.id, entry.data())), snapshot.size >= shown),
+      (snapshot) => publish(snapshot.docs.flatMap((entry) => parseActivityEvent({ ...entry.data(), id: entry.id, createdAt: timestampToIso(entry.data().createdAt) }) ?? []), snapshot.size >= shown),
       (error) => onError?.(error),
     )
   }
@@ -73,7 +73,7 @@ export function createFirestoreActivityRepository(
   }
 }
 
-export function activityFields(actor: ActivityActor, input: ActivityInput) {
+function activityFields(actor: ActivityActor, input: ActivityInput) {
   return {
     type: input.type,
     entity: input.entity,
@@ -86,44 +86,4 @@ export function activityFields(actor: ActivityActor, input: ActivityInput) {
     createdAt: serverTimestamp(),
     details: emptyDetails(input.details),
   }
-}
-
-function parseActivity(id: string, data: Record<string, unknown>): ActivityEvent[] {
-  if (!isActivityType(data.type)) return []
-  if (data.entity !== 'guest' && data.entity !== 'song' && data.entity !== 'venue' && data.entity !== 'member' && data.entity !== 'rsvp') {
-    return []
-  }
-  const details = data.details && typeof data.details === 'object' ? data.details as Record<string, unknown> : {}
-  return [{
-    id,
-    type: data.type,
-    entity: data.entity,
-    entityId: typeof data.entityId === 'string' ? data.entityId : '',
-    entityName: typeof data.entityName === 'string' ? data.entityName : '',
-    actorEmail: typeof data.actorEmail === 'string' ? data.actorEmail : '',
-    actorName: typeof data.actorName === 'string' ? data.actorName : '',
-    actorRole: isWeddingRole(data.actorRole) ? data.actorRole : null,
-    actorPhotoUrl: typeof data.actorPhotoUrl === 'string' ? data.actorPhotoUrl : '',
-    createdAt: timestampToIso(data.createdAt),
-    details: emptyDetails({
-      from: typeof details.from === 'string' ? details.from : '',
-      to: typeof details.to === 'string' ? details.to : '',
-      count: typeof details.count === 'number' ? details.count : 0,
-      names: stringList(details.names),
-      fields: stringList(details.fields),
-      artworkUrl: typeof details.artworkUrl === 'string' ? details.artworkUrl : '',
-    }),
-  }]
-}
-
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, 8) : []
-}
-
-function timestampToIso(value: unknown): string {
-  if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
-    return (value as { toDate: () => Date }).toDate().toISOString()
-  }
-  if (typeof value === 'string') return value
-  return new Date().toISOString()
 }

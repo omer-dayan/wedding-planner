@@ -97,7 +97,7 @@ export function GuestListPage() {
   }
 
   async function importContacts(drafts: GuestDraft[]) {
-    await app.guests.importContacts(drafts)
+    await app.guests.createMany(drafts)
     setBanner(`נוספו ${drafts.length} אנשי קשר.`)
     setModal({ type: 'none' })
   }
