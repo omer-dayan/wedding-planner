@@ -32,18 +32,6 @@ export function readFirebaseConfig(env: FirebaseEnv = defaultEnv()): FirebaseWeb
   }
 }
 
-export function toFirebaseOptions(config: FirebaseWebConfig): Record<string, string> {
-  const options: Record<string, string> = {
-    apiKey: config.apiKey,
-    authDomain: config.authDomain,
-    projectId: config.projectId,
-    appId: config.appId,
-  }
-  if (config.storageBucket) options.storageBucket = config.storageBucket
-  if (config.messagingSenderId) options.messagingSenderId = config.messagingSenderId
-  return options
-}
-
 function defaultEnv(): FirebaseEnv {
   return {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

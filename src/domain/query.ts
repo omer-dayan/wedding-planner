@@ -69,10 +69,3 @@ export function categoryHeadcount(
     .reduce((sum, guest) => (ids.has(guest.categoryId) ? sum + guest.partySize : sum), 0)
 }
 
-export function groupOptions(guests: readonly Guest[]): string[] {
-  const groups = new Set<string>()
-  for (const guest of guests) {
-    if (guest.group) groups.add(guest.group)
-  }
-  return [...groups].sort((a, b) => a.localeCompare(b, 'he'))
-}
