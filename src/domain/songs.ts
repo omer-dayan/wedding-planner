@@ -142,12 +142,6 @@ function songIdentity(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('he')
 }
 
-export function spotifyHref(title: string, artist: string, pastedUrl: string): string {
-  const id = spotifyTrackId(pastedUrl)
-  if (id) return `https://open.spotify.com/track/${id}`
-  return `https://open.spotify.com/search/${encodeURIComponent(`${title} ${artist}`.replace(/\s+/g, ' ').trim())}`
-}
-
 export function canEditSong(
   wedding: RoleAssignment | null,
   email: string | null,

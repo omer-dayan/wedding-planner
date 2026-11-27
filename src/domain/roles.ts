@@ -40,13 +40,6 @@ export function roleLabel(role: WeddingRoleId | null): string {
   return ROLES_BY_ID.get(role)?.label ?? 'ללא תפקיד'
 }
 
-export function roleFromLabel(value: string): WeddingRoleId | null {
-  const trimmed = value.trim()
-  if (!trimmed || trimmed === 'ללא תפקיד') return null
-  if (isWeddingRole(trimmed)) return trimmed
-  return WEDDING_ROLES.find((role) => role.label === trimmed)?.id ?? null
-}
-
 export interface RoleAssignment {
   ownerEmail: string
   memberRoles?: Readonly<Record<string, unknown>>

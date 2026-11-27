@@ -8,11 +8,7 @@ import type { VenueRepository } from '../data/venueRepository.ts'
 import type { ExpenseRepository } from '../data/expenseRepository.ts'
 import type { Wedding } from '../domain/members.ts'
 import type { WeddingRoleId } from '../domain/roles.ts'
-import type { FamilyPlace } from '../domain/geo.ts'
-import type { PaletteChoice } from '../domain/palette.ts'
-import type { BlockedDate } from '../domain/blockedDates.ts'
-import type { GuestCategory } from '../domain/guestCategories.ts'
-import type { VenueQuestion } from '../domain/venueQuestions.ts'
+import type { settingSetters, WeddingSettings } from '../domain/settings.ts'
 
 export interface SessionUser {
   email: string
@@ -20,7 +16,7 @@ export interface SessionUser {
   photoUrl: string
 }
 
-export interface AppServices {
+export interface AppServices extends WeddingSettings, ReturnType<typeof settingSetters> {
   mode: 'local' | 'cloud'
   guests: GuestRepository
   songs: SongRepository
@@ -31,18 +27,6 @@ export interface AppServices {
   user: SessionUser | null
   wedding: Wedding | null
   weddings: readonly Wedding[]
-  weddingDate: string
-  venueQuestions: VenueQuestion[]
-  guestCategories: GuestCategory[]
-  familyPlaces: FamilyPlace[]
-  blockedDates: BlockedDate[]
-  palette: PaletteChoice | null
-  onSetWeddingDate: ((date: string) => Promise<void>) | null
-  onSetPalette: ((palette: PaletteChoice | null) => Promise<void>) | null
-  onSetVenueQuestions: ((questions: VenueQuestion[]) => Promise<void>) | null
-  onSetGuestCategories: ((categories: GuestCategory[]) => Promise<void>) | null
-  onSetBlockedDates: ((dates: BlockedDate[]) => Promise<void>) | null
-  onSetFamilyPlaces: ((places: FamilyPlace[]) => Promise<void>) | null
   onSignOut: (() => Promise<void>) | null
   onSelectWedding: ((id: string) => void) | null
   onRenameWedding: ((name: string) => Promise<void>) | null

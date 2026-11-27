@@ -23,3 +23,9 @@ export function nextPermissionRetryDelay(failureCount: number, error: unknown): 
   if (!isPermissionDenied(error)) return null
   return PERMISSION_DENIED_BACKOFF_MS[failureCount] ?? null
 }
+
+/** Firestore server timestamps arrive as Timestamp objects; older documents stored ISO strings. */
+export function timestampToIso(value: unknown): string {
+  if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') return (value.toDate() as Date).toISOString()
+  return typeof value === 'string' ? value : new Date().toISOString()
+}

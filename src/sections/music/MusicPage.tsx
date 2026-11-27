@@ -69,15 +69,7 @@ export function MusicPage() {
         setCovers((current) => ({ ...current, [song.id]: { artworkUrl, previewUrl } }))
         if (!found || !canEditSong(app.wedding, app.user?.email ?? null, song)) continue
         if (artworkUrl === song.artworkUrl && previewUrl === song.previewUrl) continue
-        await app.songs.update(song.id, {
-          title: song.title,
-          artist: song.artist,
-          url: song.url,
-          artworkUrl,
-          previewUrl,
-          moment: song.moment,
-          notes: song.notes,
-        }).catch(() => undefined)
+        await app.songs.update(song.id, { ...song, artworkUrl, previewUrl }).catch(() => undefined)
       }
     })()
     return () => {
@@ -93,9 +85,12 @@ export function MusicPage() {
     }
   }
 
-  function authorName() {
-    if (!app.user) return 'מכשיר זה'
-    return app.user.displayName.trim() || app.user.email
+  function author() {
+    return {
+      email: app.user?.email ?? '',
+      name: app.user ? app.user.displayName.trim() || app.user.email : 'מכשיר זה',
+      role: app.user ? assignedRole(app.wedding, app.user.email) : null,
+    }
   }
 
   async function save(draft: SongDraft) {
@@ -103,13 +98,7 @@ export function MusicPage() {
     setError(null)
     try {
       if (editing && editing !== 'new') await app.songs.update(editing.id, draft)
-      else {
-        await app.songs.create(draft, {
-          email: app.user?.email ?? '',
-          name: authorName(),
-          role: app.user ? assignedRole(app.wedding, app.user.email) : null,
-        })
-      }
+      else await app.songs.create(draft, author())
       setEditing(null)
     } catch (failure) {
       setError(messageFrom(failure))
@@ -121,25 +110,13 @@ export function MusicPage() {
 
   async function addFromSearch(draft: SongDraft) {
     setError(null)
-    await app.songs.create(draft, {
-      email: app.user?.email ?? '',
-      name: authorName(),
-      role: app.user ? assignedRole(app.wedding, app.user.email) : null,
-    })
+    await app.songs.create(draft, author())
     setToast({ id: Date.now(), text: 'השיר נוסף לרשימה' })
   }
 
   async function updateMoment(song: Song, next: SongMomentId | null) {
     setError(null)
-    await app.songs.update(song.id, {
-      title: song.title,
-      artist: song.artist,
-      url: song.url,
-      artworkUrl: song.artworkUrl,
-      previewUrl: song.previewUrl,
-      moment: next,
-      notes: song.notes,
-    })
+    await app.songs.update(song.id, { ...song, moment: next })
   }
 
   async function remove(song: Song) {

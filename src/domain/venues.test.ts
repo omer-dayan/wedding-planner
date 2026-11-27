@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canManageVenues, compareVenues, googleTikTokVideoSearchUrl, mapsSearchUrl, normalizeVenue, offerTitle, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery, type Venue } from './venues.ts'
+import { canManageVenues, compareVenues, normalizeVenue, offerTitle, tiktokAppSearchUrl, tiktokVideoId, tiktokWebVideoSearchUrl, venueVideoQuery, type Venue } from './venues.ts'
 
 describe('venues', () => {
   it('requires a name and reads a TikTok video id', () => {
@@ -26,8 +26,6 @@ describe('venues', () => {
     expect(venueVideoQuery('אולם גן ורדים', 'חיפה')).toBe('אולם גן ורדים חיפה')
     expect(tiktokAppSearchUrl(query)).toBe(`tiktok://search?keyword=${encodeURIComponent(query)}`)
     expect(tiktokWebVideoSearchUrl(query)).toBe(`https://www.tiktok.com/search/video?q=${encodeURIComponent(query)}`)
-    expect(googleTikTokVideoSearchUrl('גן ורדים', 'תל אביב')).toContain('site%3Atiktok.com')
-    expect(mapsSearchUrl('גן ורדים', 'תל אביב')).toContain('query=')
   })
 
   it('sorts the chosen venue first, then by status and visit date', () => {

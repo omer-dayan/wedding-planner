@@ -1,7 +1,5 @@
 import type { Category, RsvpStatus, Side, SubSide } from './types.ts'
 
-export const PRESET_GROUPS = ['משפחה', 'חברים', 'עבודה']
-
 export const SIDE_LABELS: Record<Side, string> = {
   groom: 'חתן',
   bride: 'כלה',

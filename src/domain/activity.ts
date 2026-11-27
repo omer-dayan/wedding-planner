@@ -98,6 +98,40 @@ export function emptyDetails(partial: Partial<ActivityDetails> = {}): ActivityDe
   }
 }
 
+const ENTITIES: readonly ActivityEntity[] = ['guest', 'song', 'venue', 'member', 'rsvp', 'expense']
+
+const text = (value: unknown) => (typeof value === 'string' ? value : '')
+const strings = (value: unknown, max: number) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, max) : [])
+
+/** A stored event, or null when it is not one this app knows how to show. */
+export function parseActivityEvent(value: unknown): ActivityEvent | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (typeof record.id !== 'string' || !isActivityType(record.type)) return null
+  if (!ENTITIES.includes(record.entity as ActivityEntity)) return null
+  const details = record.details && typeof record.details === 'object' ? record.details as Record<string, unknown> : {}
+  return {
+    id: record.id,
+    type: record.type,
+    entity: record.entity as ActivityEntity,
+    entityId: text(record.entityId),
+    entityName: text(record.entityName),
+    actorEmail: text(record.actorEmail),
+    actorName: text(record.actorName),
+    actorRole: isWeddingRole(record.actorRole) ? record.actorRole : null,
+    actorPhotoUrl: text(record.actorPhotoUrl),
+    createdAt: text(record.createdAt) || new Date(0).toISOString(),
+    details: emptyDetails({
+      from: text(details.from),
+      to: text(details.to),
+      count: typeof details.count === 'number' ? details.count : 0,
+      names: strings(details.names, 8),
+      fields: strings(details.fields, 12),
+      artworkUrl: text(details.artworkUrl),
+    }),
+  }
+}
+
 export function isActivityType(value: unknown): value is ActivityType {
   return typeof value === 'string' && (ACTIVITY_TYPES as readonly string[]).includes(value)
 }

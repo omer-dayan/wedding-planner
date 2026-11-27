@@ -1,9 +1,8 @@
 import { buildComment, parseStoredComment, type ActivityComment } from '../domain/activityComments.ts'
 import type { ActivityActor } from '../domain/activity.ts'
 import { DomainError } from '../domain/errors.ts'
+import { createLocalList } from './records.ts'
 import type { KeyValueStorage } from './storage.ts'
-
-export const ACTIVITY_COMMENTS_STORAGE_KEY = 'wedding-planner.activityComments.v1'
 
 export interface ActivityCommentRepository {
   subscribe(listener: (comments: ActivityComment[]) => void, onError?: (error: unknown) => void): () => void
@@ -14,63 +13,20 @@ export interface ActivityCommentRepository {
 export function createLocalActivityCommentRepository(
   storage: KeyValueStorage,
   actor: () => ActivityActor,
-  key = ACTIVITY_COMMENTS_STORAGE_KEY,
+  key = 'wedding-planner.activityComments.v1',
 ): ActivityCommentRepository {
-  const listeners = new Set<(comments: ActivityComment[]) => void>()
-  let comments = readComments(storage, key)
-
-  function persist(next: ActivityComment[]) {
-    try {
-      storage.setItem(key, JSON.stringify(next))
-    } catch {
-      throw new DomainError('storage-full')
-    }
-    comments = next
-    publish()
-  }
-
-  function publish() {
-    const ordered = comments.slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-    for (const listener of listeners) listener(ordered)
-  }
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (event) => {
-      if (event.key !== key) return
-      comments = readComments(storage, key)
-      publish()
-    })
-  }
-
+  const list = createLocalList(storage, key, parseStoredComment)
+  const ordered = (comments: ActivityComment[]) => comments.slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   return {
-    subscribe(listener) {
-      listener(comments.slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt)))
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
+    subscribe: (listener) => list.subscribe((comments) => listener(ordered(comments))),
     async add(eventId, text) {
       const comment = buildComment(eventId, text, actor())
-      persist([...comments, comment])
+      list.save([...list.items(), comment])
       return comment
     },
     async remove(id) {
-      if (!comments.some((comment) => comment.id === id)) throw new DomainError('not-found')
-      persist(comments.filter((comment) => comment.id !== id))
+      if (!list.items().some((comment) => comment.id === id)) throw new DomainError('not-found')
+      list.save(list.items().filter((comment) => comment.id !== id))
     },
-  }
-}
-
-function readComments(storage: KeyValueStorage, key: string): ActivityComment[] {
-  const raw = storage.getItem(key)
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.flatMap((entry) => {
-      const comment = parseStoredComment(entry)
-      return comment ? [comment] : []
-    })
-  } catch {
-    return []
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFirebaseConfig, toFirebaseOptions } from './firebaseConfig.ts'
+import { readFirebaseConfig } from './firebaseConfig.ts'
 
 describe('readFirebaseConfig', () => {
   it('falls back to local mode when the web config is incomplete', () => {
@@ -21,6 +21,5 @@ describe('readFirebaseConfig', () => {
       storageBucket: 'demo.appspot.com',
       appId: '1:2:web:abc',
     })
-    expect(toFirebaseOptions(config!).messagingSenderId).toBeUndefined()
   })
 })

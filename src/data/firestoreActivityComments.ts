@@ -9,9 +9,9 @@ import {
   serverTimestamp,
   type Firestore,
 } from 'firebase/firestore'
-import { buildComment, COMMENT_TEXT_MAX, type ActivityComment } from '../domain/activityComments.ts'
+import { buildComment, parseStoredComment, type ActivityComment } from '../domain/activityComments.ts'
 import type { ActivityActor } from '../domain/activity.ts'
-import { isWeddingRole } from '../domain/roles.ts'
+import { timestampToIso } from './firestoreListeners.ts'
 import type { ActivityCommentRepository } from './activityCommentRepository.ts'
 
 export function createFirestoreActivityCommentRepository(
@@ -36,7 +36,7 @@ export function createFirestoreActivityCommentRepository(
     const page = query(comments, orderBy('createdAt', 'asc'))
     stop = onSnapshot(
       page,
-      (snapshot) => publish(snapshot.docs.flatMap((entry) => parseComment(entry.id, entry.data()))),
+      (snapshot) => publish(snapshot.docs.flatMap((entry) => parseStoredComment({ ...entry.data(), id: entry.id, createdAt: timestampToIso(entry.data().createdAt) }) ?? [])),
       (error) => onError?.(error),
     )
   }
@@ -72,27 +72,4 @@ export function createFirestoreActivityCommentRepository(
       await deleteDoc(doc(comments, id))
     },
   }
-}
-
-function parseComment(id: string, data: Record<string, unknown>): ActivityComment[] {
-  if (typeof data.eventId !== 'string' || data.eventId.length === 0) return []
-  if (typeof data.text !== 'string' || data.text.trim().length === 0 || data.text.length > COMMENT_TEXT_MAX) return []
-  return [{
-    id,
-    eventId: data.eventId,
-    text: data.text.trim(),
-    actorEmail: typeof data.actorEmail === 'string' ? data.actorEmail : '',
-    actorName: typeof data.actorName === 'string' ? data.actorName : '',
-    actorRole: isWeddingRole(data.actorRole) ? data.actorRole : null,
-    actorPhotoUrl: typeof data.actorPhotoUrl === 'string' ? data.actorPhotoUrl : '',
-    createdAt: timestampToIso(data.createdAt),
-  }]
-}
-
-function timestampToIso(value: unknown): string {
-  if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
-    return (value as { toDate: () => Date }).toDate().toISOString()
-  }
-  if (typeof value === 'string') return value
-  return new Date().toISOString()
 }

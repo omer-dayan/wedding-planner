@@ -161,15 +161,6 @@ export function tiktokWebVideoSearchUrl(query: string): string {
   return `https://www.tiktok.com/search/video?q=${encodeURIComponent(query)}`
 }
 
-export function googleTikTokVideoSearchUrl(name: string, city: string): string {
-  return `https://www.google.com/search?q=${encodeURIComponent(`${venueVideoQuery(name, city)} site:tiktok.com`)}`
-}
-
-export function mapsSearchUrl(name: string, city: string): string {
-  const query = `${name} ${city}`.replace(/\s+/g, ' ').trim()
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
-}
-
 export function normalizeVenue(input: VenueDraft): VenueDraft {
   const name = input.name.trim().replace(/\s+/g, ' ')
   const city = input.city.trim().replace(/\s+/g, ' ')

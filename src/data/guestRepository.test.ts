@@ -3,6 +3,12 @@ import { makeDraft, makeGuest } from '../domain/makeGuest.ts'
 import { createLocalGuestRepository, GUEST_STORAGE_KEY } from './guestRepository.ts'
 import { createMemoryStorage } from './storage.ts'
 
+function names(repo: ReturnType<typeof createLocalGuestRepository>): string[] {
+  let seen: string[] = []
+  repo.subscribe((guests) => { seen = guests.map((guest) => guest.fullName) })()
+  return seen
+}
+
 describe('local guest repository', () => {
   it('creates, updates, removes and reloads guests from storage', async () => {
     const storage = createMemoryStorage()
@@ -19,14 +25,13 @@ describe('local guest repository', () => {
     expect(seen).toEqual([0, 1, 1, 0])
 
     await repo.create(makeDraft({ fullName: 'יוסי לוי' }))
-    const reloaded = createLocalGuestRepository(storage)
-    expect((await reloaded.ready()).map((guest) => guest.fullName)).toEqual(['יוסי לוי'])
+    expect(names(createLocalGuestRepository(storage))).toEqual(['יוסי לוי'])
   })
 
   it('drops corrupt storage instead of throwing', async () => {
     const storage = createMemoryStorage({ [GUEST_STORAGE_KEY]: '{not json' })
     const repo = createLocalGuestRepository(storage)
-    expect(await repo.ready()).toEqual([])
+    expect(names(repo)).toEqual([])
   })
 
   it('ignores invalid records and rejects an empty name', async () => {
@@ -34,13 +39,7 @@ describe('local guest repository', () => {
       [GUEST_STORAGE_KEY]: JSON.stringify([{ id: 'bad' }, makeGuest({ id: 'ok', fullName: 'אבי ברק' })]),
     })
     const repo = createLocalGuestRepository(storage)
-    expect((await repo.ready()).map((guest) => guest.id)).toEqual(['ok'])
+    expect(names(repo)).toEqual(['אבי ברק'])
     await expect(repo.create(makeDraft({ fullName: '   ' }))).rejects.toMatchObject({ errors: ['name-required'] })
-  })
-
-  it('replaces the saved list', async () => {
-    const repo = createLocalGuestRepository(createMemoryStorage())
-    await repo.replaceAll([makeGuest({ id: 'a', fullName: 'נועה מזרחי' })])
-    expect((await repo.ready()).map((guest) => guest.fullName)).toEqual(['נועה מזרחי'])
   })
 })

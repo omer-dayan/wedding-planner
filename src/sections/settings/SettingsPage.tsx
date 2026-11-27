@@ -20,14 +20,14 @@ import { DEFAULT_PALETTE, derivePalette, type PaletteChoice } from '../../domain
 import { geocodeInIsrael } from '../../data/geocode.ts'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { messageFrom } from '../../ui/messageFrom.ts'
+import { useAction } from '../../ui/useAction.ts'
 
 export function SettingsPage() {
   const app = useAppServices()
   const [email, setEmail] = useState('')
   const [newRole, setNewRole] = useState<WeddingRoleId>('bride')
   const [status, setStatus] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const { busy, error, run: runAction } = useAction()
 
   if (app.mode === 'local' || !app.wedding || !app.user) {
     return (
@@ -59,17 +59,8 @@ export function SettingsPage() {
   const members = displayMembers(wedding.memberEmails, wedding.ownerEmail)
 
   async function run(action: () => Promise<void>, success: string) {
-    setBusy(true)
-    setError(null)
     setStatus(null)
-    try {
-      await action()
-      setStatus(success)
-    } catch (failure) {
-      setError(messageFrom(failure))
-    } finally {
-      setBusy(false)
-    }
+    if (await runAction(action)) setStatus(success)
   }
 
   return (
@@ -233,21 +224,14 @@ function PaletteEditor({
   onSave: ((palette: PaletteChoice | null) => Promise<void>) | null
 }) {
   const choice = palette ?? DEFAULT_PALETTE
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const { busy, error, run } = useAction()
   const preview = derivePalette(choice)
 
   async function save(next: PaletteChoice | null) {
     if (!onSave) return
-    setBusy(true)
-    setError(null)
-    try {
+    await run(async () => {
       await onSave(next)
-    } catch (failure) {
-      setError(messageFrom(failure))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
@@ -287,15 +271,12 @@ function FamilyPlacesEditor({
   onSave: ((places: FamilyPlace[]) => Promise<void>) | null
 }) {
   const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const { busy, error, setError, run } = useAction()
 
   async function add(event: FormEvent) {
     event.preventDefault()
     if (!onSave) return
-    setBusy(true)
-    setError(null)
-    try {
+    await run(async () => {
       const found = await geocodeInIsrael(name)
       if (!found) {
         setError('לא מצאנו את העיר. נסו שם כמו קרית גת.')
@@ -312,24 +293,14 @@ function FamilyPlacesEditor({
       ])
       await onSave(next)
       setName('')
-    } catch (failure) {
-      setError(messageFrom(failure))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   async function remove(id: string) {
     if (!onSave) return
-    setBusy(true)
-    setError(null)
-    try {
+    await run(async () => {
       await onSave(places.filter((place) => place.id !== id))
-    } catch (failure) {
-      setError(messageFrom(failure))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
