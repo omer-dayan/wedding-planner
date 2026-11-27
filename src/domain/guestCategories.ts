@@ -67,6 +67,18 @@ export function subtreeIds(categories: readonly GuestCategory[], id: string): st
   return ids
 }
 
+const OTHER_PREFIX = 'other:'
+
+/** Display-only bucket for people filed directly under a category that also has subcategories. */
+export function otherCategoryId(parentId: string): string {
+  return `${OTHER_PREFIX}${parentId}`
+}
+
+/** The real category behind an "other" bucket id, or null for any other filter value. */
+export function otherParentId(filter: string): string | null {
+  return filter.startsWith(OTHER_PREFIX) ? filter.slice(OTHER_PREFIX.length) : null
+}
+
 export function ancestorChain(categories: readonly GuestCategory[], id: string): GuestCategory[] {
   const chain: GuestCategory[] = []
   const seen = new Set<string>()

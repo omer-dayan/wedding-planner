@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeGuest } from './makeGuest.ts'
+import { otherCategoryId } from './guestCategories.ts'
 import { categoryHeadcount, EMPTY_QUERY, queryGuests } from './query.ts'
 
 const guests = [
@@ -47,5 +48,20 @@ describe('queryGuests', () => {
     const desc = queryGuests(guests, { search: '', side: 'all', subSide: 'all', category: 'all', rsvp: 'all', sort: 'desc' }).map((guest) => guest.fullName)
     expect(asc).toEqual([...asc].sort((a, b) => a.localeCompare(b, 'he')))
     expect(desc).toEqual([...asc].reverse())
+  })
+
+  it('treats people filed directly on a parent category as a virtual "other" subcategory', () => {
+    const categories = [
+      { id: 'c_family', label: 'משפחה', parentId: '' },
+      { id: 'c_iluz', label: 'משפחת אילוז', parentId: 'c_family' },
+    ]
+    const rows = [
+      makeGuest({ id: '1', categoryId: 'c_family', partySize: 1 }),
+      makeGuest({ id: '2', categoryId: 'c_iluz', partySize: 9 }),
+    ]
+    const other = otherCategoryId('c_family')
+    expect(categoryHeadcount(rows, EMPTY_QUERY, categories, other)).toBe(1)
+    expect(categoryHeadcount(rows, EMPTY_QUERY, categories, 'c_family')).toBe(10)
+    expect(queryGuests(rows, { ...EMPTY_QUERY, category: other }, categories).map((guest) => guest.id)).toEqual(['1'])
   })
 })

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppServices } from '../../app/useAppServices.ts'
 import { guestsToAppCsv } from '../../domain/csv.ts'
-import { ancestorChain, childrenOf, legacyCategory, pathLabel } from '../../domain/guestCategories.ts'
+import { ancestorChain, childrenOf, legacyCategory, otherCategoryId, otherParentId, pathLabel } from '../../domain/guestCategories.ts'
 import { CATEGORY_LABELS, RSVP_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
 import { assignedRole, canEditGuest, isCoupleOrOwner, placementForRole } from '../../domain/roles.ts'
 import { EMPTY_QUERY, categoryHeadcount, queryGuests } from '../../domain/query.ts'
@@ -59,11 +59,12 @@ export function GuestListPage() {
   const viewerEmail = app.user?.email ?? null
   const placement = placementForRole(assignedRole(app.wedding, viewerEmail))
   const canReclassify = isCoupleOrOwner(app.wedding, viewerEmail)
-  const categoryTrail = query.category === 'all' ? [] : ancestorChain(app.guestCategories, query.category)
-  const categoryLevels = [childrenOf(app.guestCategories, '')]
+  const otherParent = otherParentId(query.category)
+  const categoryTrail = query.category === 'all' ? [] : ancestorChain(app.guestCategories, otherParent ?? query.category)
+  const categoryLevels = [{ parentId: '', items: childrenOf(app.guestCategories, '') }]
   for (const category of categoryTrail) {
     const children = childrenOf(app.guestCategories, category.id)
-    if (children.length > 0) categoryLevels.push(children)
+    if (children.length > 0) categoryLevels.push({ parentId: category.id, items: children })
   }
 
   async function saveGuest(draft: GuestDraft) {
@@ -159,7 +160,7 @@ export function GuestListPage() {
             </div>
             <div className="category-filters">
               {categoryLevels.map((level, index) => {
-                const chips = level.flatMap((category) => {
+                const chips = level.items.flatMap((category) => {
                   const people = categoryHeadcount(guests ?? [], query, app.guestCategories, category.id)
                   if (people === 0) return []
                   const selected = query.category === category.id || categoryTrail.some((item) => item.id === category.id)
@@ -169,9 +170,20 @@ export function GuestListPage() {
                     </button>
                   )]
                 })
+                if (level.parentId) {
+                  const otherId = otherCategoryId(level.parentId)
+                  const people = categoryHeadcount(guests ?? [], query, app.guestCategories, otherId)
+                  if (people > 0) {
+                    chips.push(
+                      <button key={otherId} type="button" className={query.category === otherId ? 'chip chip-on' : 'chip'} aria-pressed={query.category === otherId} onClick={() => setQuery({ ...query, category: otherId })}>
+                        אחר {people}
+                      </button>,
+                    )
+                  }
+                }
                 if (chips.length === 0 && index > 0) return null
                 return (
-                  <div key={level.map((category) => category.id).join('-') || 'roots'} className="chip-row" role="tablist" aria-label={index === 0 ? 'סינון לפי קטגוריה' : 'תת-קטגוריות'}>
+                  <div key={level.parentId || 'roots'} className="chip-row" role="tablist" aria-label={index === 0 ? 'סינון לפי קטגוריה' : 'תת-קטגוריות'}>
                     {index === 0 && (
                       <button type="button" className={query.category === 'all' ? 'chip chip-on' : 'chip'} aria-pressed={query.category === 'all'} onClick={() => setQuery({ ...query, category: 'all' })}>הכל</button>
                     )}

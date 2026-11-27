@@ -1,4 +1,4 @@
-import { subtreeIds, type GuestCategory } from './guestCategories.ts'
+import { otherParentId, subtreeIds, type GuestCategory } from './guestCategories.ts'
 import type { Guest, RsvpStatus, Side, SubSide } from './types.ts'
 
 export type SideFilter = Side | 'unspecified' | 'all'
@@ -24,6 +24,12 @@ export const EMPTY_QUERY: GuestQuery = {
   sort: 'asc',
 }
 
+/** Ids a category filter matches. An "other" bucket matches only people filed directly on its parent. */
+function categoryIds(categories: readonly GuestCategory[], filter: string): Set<string> {
+  const parentId = otherParentId(filter)
+  return new Set(parentId === null ? subtreeIds(categories, filter) : [parentId])
+}
+
 export function queryGuests(
   guests: readonly Guest[],
   query: GuestQuery,
@@ -31,7 +37,7 @@ export function queryGuests(
 ): Guest[] {
   const search = query.search.trim().toLocaleLowerCase('he')
   const digits = search.replace(/\D/g, '')
-  const branch = query.category === 'all' ? null : new Set(subtreeIds(categories, query.category))
+  const branch = query.category === 'all' ? null : categoryIds(categories, query.category)
   const filtered = guests.filter((guest) => {
     if (query.side !== 'all' && (guest.side ?? 'unspecified') !== query.side) return false
     if (query.subSide !== 'all' && guest.subSide !== query.subSide) return false
@@ -58,7 +64,7 @@ export function categoryHeadcount(
   categories: readonly GuestCategory[],
   categoryId: string,
 ): number {
-  const ids = new Set(subtreeIds(categories, categoryId))
+  const ids = categoryIds(categories, categoryId)
   return queryGuests(guests, { ...query, category: 'all' }, categories)
     .reduce((sum, guest) => (ids.has(guest.categoryId) ? sum + guest.partySize : sum), 0)
 }
