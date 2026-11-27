@@ -371,7 +371,7 @@ function VenueCard({
   }
 
   return (
-    <li className={`venue-card venue-row venue-${venue.status}`}>
+    <li className={`venue-card venue-row venue-${venue.status}${open ? ' venue-row-open' : ''}`}>
       <div className={`venue-photo venue-cover-${venue.status}`}>
         {venue.imageUrl ? (
           <img src={venue.imageUrl} alt="" />
