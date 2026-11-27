@@ -49,8 +49,40 @@ jobs:
         with:
           path: dist
 
+  # Publishes firestore.rules before the site goes live, so a new version of the app never
+  # writes fields that the live rules do not know yet. Skipped until the secret exists.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for a service account
+        id: creds
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::FIREBASE_SERVICE_ACCOUNT is not set, so Firestore rules were not deployed."
+          fi
+
+      - name: Checkout
+        if: steps.creds.outputs.present == 'true'
+        uses: actions/checkout@v4
+
+      - name: Deploy Firestore rules
+        if: steps.creds.outputs.present == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID || 'omer-wedding-planner' }}
+        run: |
+          key="$RUNNER_TEMP/firebase-key.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$key"
+          export GOOGLE_APPLICATION_CREDENTIALS="$key"
+          npx --yes firebase-tools@latest deploy --only firestore:rules --project "$PROJECT_ID" --non-interactive
+          rm -f "$key"
+
   deploy:
-    needs: build
+    needs: [build, rules]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
