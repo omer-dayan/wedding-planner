@@ -1206,14 +1206,12 @@ textarea { min-height: 88px; resize: vertical; }
 .venue-offer:first-child { border-top: 0; padding-top: 4px; }
 .venue-offer h3 { margin: 0; font-size: 1.05rem; }
 .venue-offer-blocked {
-  border-inline-start: 4px solid var(--no);
-  padding-inline-start: 10px;
+  padding-inline: 12px;
+  border: 1px solid var(--no);
+  border-radius: 14px;
   background: var(--no-soft);
-  border-start-start-radius: 0;
-  border-end-start-radius: 0;
-  border-start-end-radius: 12px;
-  border-end-end-radius: 12px;
 }
+.venue-offer-blocked + .venue-offer { border-top: 0; }
 .venue-offer-warning { color: var(--no); font-weight: 600; margin: 0; }
 .venue-summary-blocked { color: var(--no); font-weight: 600; }
 
