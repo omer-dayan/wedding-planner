@@ -26,8 +26,8 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
   if (!Number.isInteger(input.partySize) || input.partySize < 1 || input.partySize > 100) {
     errors.push('party-size')
   }
-  if (!Number.isInteger(input.childCount) || input.childCount < 0 || input.childCount > 100) {
-    errors.push('child-count')
+  for (const count of [input.childrenSmall, input.childrenOlder]) {
+    if (!Number.isInteger(count) || count < 0 || count > 100) errors.push('child-count')
   }
   if (!Number.isInteger(input.drinkerCount) || input.drinkerCount < 0 || input.drinkerCount > input.partySize) {
     errors.push('drinker-count')
@@ -52,12 +52,25 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
     role,
     group,
     partySize: input.partySize,
-    childCount: input.childCount,
+    childrenSmall: input.childrenSmall,
+    childrenOlder: input.childrenOlder,
     drinkerCount: input.drinkerCount,
     partySizeAssumed: input.partySizeAssumed,
     rsvp: input.rsvp,
     notes,
   }
+}
+
+function wholeCount(value: unknown): number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : 0
+}
+
+/** Guests saved before children were split by age keep their old total in the older group. */
+function storedChildren(record: Record<string, unknown>): { childrenSmall: number; childrenOlder: number } {
+  if (record.childrenSmall === undefined && record.childrenOlder === undefined) {
+    return { childrenSmall: 0, childrenOlder: wholeCount(record.childCount) }
+  }
+  return { childrenSmall: wholeCount(record.childrenSmall), childrenOlder: wholeCount(record.childrenOlder) }
 }
 
 function storedDrinkers(value: unknown, partySize: number): number {
@@ -83,7 +96,7 @@ export function parseStoredGuest(value: unknown): Guest | null {
       categoryId: typeof record.categoryId === 'string' ? record.categoryId : '',
       group: typeof record.group === 'string' ? record.group : '',
       partySize: typeof record.partySize === 'number' ? record.partySize : Number.NaN,
-      childCount: typeof record.childCount === 'number' && Number.isInteger(record.childCount) ? record.childCount : 0,
+      ...storedChildren(record),
       drinkerCount: storedDrinkers(record.drinkerCount, typeof record.partySize === 'number' ? record.partySize : 0),
       partySizeAssumed: record.partySizeAssumed === true,
       rsvp: (typeof record.rsvp === 'string' ? record.rsvp : '') as GuestDraft['rsvp'],

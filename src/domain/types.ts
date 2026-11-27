@@ -23,8 +23,10 @@ export interface GuestDraft {
   role: WeddingRoleId | null
   group: string
   partySize: number
-  /** Children arriving with this guest, in addition to partySize. */
-  childCount: number
+  /** Children aged 0 to 3 arriving with this guest, in addition to partySize. */
+  childrenSmall: number
+  /** Children aged 4 to 10 arriving with this guest, in addition to partySize. */
+  childrenOlder: number
   /** How many of the party drink alcohol. Cannot exceed partySize. */
   drinkerCount: number
   partySizeAssumed: boolean

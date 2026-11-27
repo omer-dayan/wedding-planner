@@ -30,11 +30,12 @@ describe('summarizeGuests', () => {
 
   it('keeps children beside the adult total', () => {
     const stats = summarizeGuests([
-      makeGuest({ partySize: 4, childCount: 2, rsvp: 'attending' }),
-      makeGuest({ partySize: 1, childCount: 0, rsvp: 'declined' }),
+      makeGuest({ partySize: 4, childrenSmall: 1, childrenOlder: 1, rsvp: 'attending' }),
+      makeGuest({ partySize: 1, childrenSmall: 0, childrenOlder: 0, rsvp: 'declined' }),
     ])
     expect(stats.overall.people).toBe(5)
-    expect(stats.overall.children).toBe(2)
+    expect(stats.overall.childrenSmall).toBe(1)
+    expect(stats.overall.childrenOlder).toBe(1)
     expect(stats.overall.attending).toBe(4)
     const drinking = summarizeGuests([
       makeGuest({ partySize: 2, drinkerCount: 1, rsvp: 'attending' }),

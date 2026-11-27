@@ -79,7 +79,7 @@ export function VenuesPage() {
       const adults = stats.overall.attending + stats.overall.pending + stats.overall.maybe
       const children = next
         .filter((guest) => guest.rsvp === 'attending' || guest.rsvp === 'pending' || guest.rsvp === 'maybe')
-        .reduce((sum, guest) => sum + guest.childCount, 0)
+        .reduce((sum, guest) => sum + guest.childrenSmall + guest.childrenOlder, 0)
       setGuestCount(adults + children)
     })
   }, [app.guests])

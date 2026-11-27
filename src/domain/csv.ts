@@ -10,7 +10,8 @@ export const APP_CSV_HEADERS = [
   'צד',
   'קבוצה',
   'מספר אנשים',
-  'ילדים',
+  'ילדים 0-3',
+  'ילדים 4-10',
   'שותים',
   'מספר לא צוין',
   'סטטוס הגעה',
@@ -25,7 +26,8 @@ type CsvField =
   | 'side'
   | 'group'
   | 'partySize'
-  | 'childCount'
+  | 'childrenSmall'
+  | 'childrenOlder'
   | 'drinkerCount'
   | 'partySizeAssumed'
   | 'rsvp'
@@ -48,8 +50,10 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   'מספר אנשים': 'partySize',
   partysize: 'partySize',
   count: 'partySize',
-  ילדים: 'childCount',
-  children: 'childCount',
+  ילדים: 'childrenOlder',
+  children: 'childrenOlder',
+  'ילדים 0-3': 'childrenSmall',
+  'ילדים 4-10': 'childrenOlder',
   שותים: 'drinkerCount',
   drinkers: 'drinkerCount',
   'מספר לא צוין': 'partySizeAssumed',
@@ -111,7 +115,8 @@ export function guestsToAppCsv(guests: readonly Guest[]): string {
       guest.side ? SIDE_LABELS[guest.side] : '',
       guest.group,
       String(guest.partySize),
-      String(guest.childCount),
+      String(guest.childrenSmall),
+      String(guest.childrenOlder),
       String(guest.drinkerCount),
       guest.partySizeAssumed ? 'כן' : 'לא',
       RSVP_LABELS[guest.rsvp],
@@ -157,8 +162,9 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       errors.push({ line, code: 'invalid-count' })
       return
     }
-    const childCount = parseChildCount(columns.has('childCount') ? cell('childCount') : '')
-    if (childCount === null) {
+    const childrenSmall = parseChildCount(columns.has('childrenSmall') ? cell('childrenSmall') : '')
+    const childrenOlder = parseChildCount(columns.has('childrenOlder') ? cell('childrenOlder') : '')
+    if (childrenSmall === null || childrenOlder === null) {
       errors.push({ line, code: 'child-count' })
       return
     }
@@ -190,7 +196,8 @@ export function parseAppCsv(text: string): AppCsvParseResult {
       side: side ?? null,
       group: cell('group'),
       partySize,
-      childCount,
+      childrenSmall,
+      childrenOlder,
       drinkerCount,
       partySizeAssumed: parseYes(cell('partySizeAssumed')),
       rsvp,

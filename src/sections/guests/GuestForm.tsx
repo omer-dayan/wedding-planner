@@ -34,7 +34,8 @@ export function GuestForm({
   const [subSide, setSubSide] = useState<SubSide>(guest?.subSide ?? placement.subSide)
   const [categoryId, setCategoryId] = useState(guest?.categoryId ?? '')
   const [partySize, setPartySize] = useState(String(guest?.partySize ?? 1))
-  const [childCount, setChildCount] = useState(String(guest?.childCount ?? 0))
+  const [childrenSmall, setChildrenSmall] = useState(String(guest?.childrenSmall ?? 0))
+  const [childrenOlder, setChildrenOlder] = useState(String(guest?.childrenOlder ?? 0))
   const [drinkerCount, setDrinkerCount] = useState(String(guest?.drinkerCount ?? 0))
   const [rsvp, setRsvp] = useState<RsvpStatus>(guest?.rsvp ?? 'pending')
   const [notes, setNotes] = useState(guest?.notes ?? '')
@@ -45,7 +46,8 @@ export function GuestForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const parsedSize = Number(partySize)
-    const parsedChildren = Number(childCount)
+    const parsedSmall = Number(childrenSmall)
+    const parsedOlder = Number(childrenOlder)
     const parsedDrinkers = Number(drinkerCount)
     try {
       const draft = normalizeDraft({
@@ -58,7 +60,8 @@ export function GuestForm({
         role: guest?.role ?? null,
         group: categories.find((item) => item.id === categoryId)?.label ?? '',
         partySize: parsedSize,
-        childCount: parsedChildren,
+        childrenSmall: parsedSmall,
+        childrenOlder: parsedOlder,
         drinkerCount: parsedDrinkers,
         partySizeAssumed: false,
         rsvp,
@@ -155,10 +158,21 @@ export function GuestForm({
         />
       </label>
       <label className="field">
-        <span>ילדים שמגיעים איתו</span>
+        <span>ילדים בגילאי 0-3</span>
         <input
-          value={childCount}
-          onChange={(event) => setChildCount(event.target.value)}
+          value={childrenSmall}
+          onChange={(event) => setChildrenSmall(event.target.value)}
+          inputMode="numeric"
+          min={0}
+          max={100}
+          type="number"
+        />
+      </label>
+      <label className="field">
+        <span>ילדים בגילאי 4-10</span>
+        <input
+          value={childrenOlder}
+          onChange={(event) => setChildrenOlder(event.target.value)}
           inputMode="numeric"
           min={0}
           max={100}

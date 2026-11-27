@@ -5,7 +5,8 @@ import type { Guest, RsvpStatus, Side } from './types.ts'
 export interface StatusCounts {
   records: number
   people: number
-  children: number
+  childrenSmall: number
+  childrenOlder: number
   drinkers: number
   attending: number
   declined: number
@@ -25,7 +26,8 @@ export function emptyCounts(): StatusCounts {
   return {
     records: 0,
     people: 0,
-    children: 0,
+    childrenSmall: 0,
+    childrenOlder: 0,
     drinkers: 0,
     attending: 0,
     declined: 0,
@@ -108,7 +110,8 @@ function rank(label: string): number {
 function addCounts(bucket: StatusCounts, guest: Guest) {
   bucket.records += 1
   bucket.people += guest.partySize
-  bucket.children += guest.childCount
+  bucket.childrenSmall += guest.childrenSmall
+  bucket.childrenOlder += guest.childrenOlder
   if (guest.rsvp !== 'declined') bucket.drinkers += guest.drinkerCount
   bucket[guest.rsvp satisfies RsvpStatus] += guest.partySize
   if (guest.partySizeAssumed) bucket.assumedRecords += 1

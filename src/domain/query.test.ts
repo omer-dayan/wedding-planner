@@ -36,7 +36,7 @@ describe('queryGuests', () => {
     expect(categoryHeadcount(rows, bride, categories, 'c_friends')).toBe(5)
     expect(categoryHeadcount(rows, EMPTY_QUERY, categories, 'c_family')).toBe(9)
     expect(categoryHeadcount(
-      [makeGuest({ side: 'bride', categoryId: 'c_family', partySize: 2, childCount: 3 })],
+      [makeGuest({ side: 'bride', categoryId: 'c_family', partySize: 2, childrenSmall: 1, childrenOlder: 2 })],
       bride,
       categories,
       'c_family',

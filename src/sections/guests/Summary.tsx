@@ -9,6 +9,8 @@ const CARDS = [
   ['declined', 'לא מגיעים', 'לא יגיעו'],
   ['pending', 'ממתינים', 'עדיין בלי תשובה'],
   ['maybe', 'אולי', 'עוד לא סגור'],
+  ['childrenSmall', 'ילדים קטנים', 'גילאי 0 עד 3'],
+  ['childrenOlder', 'ילדים גדולים', 'גילאי 4 עד 10'],
 ] as const
 
 export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: readonly Guest[] }) {
@@ -19,7 +21,10 @@ export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: re
     declined: stats.overall.declined,
     pending: stats.overall.pending,
     maybe: stats.overall.maybe,
+    childrenSmall: stats.overall.childrenSmall,
+    childrenOlder: stats.overall.childrenOlder,
   }
+  const children = stats.overall.childrenSmall + stats.overall.childrenOlder
 
   return (
     <section className="summary" aria-label="סיכום מוזמנים">
@@ -29,8 +34,8 @@ export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: re
             <p className="stat-label">{label}</p>
             <p className="stat-value">
               <span>{values[key].toLocaleString('he-IL')}</span>
-              {key === 'total' && stats.overall.children > 0 && (
-                <span className="stat-children" dir="ltr">+{stats.overall.children.toLocaleString('he-IL')}</span>
+              {key === 'total' && children > 0 && (
+                <span className="stat-children" dir="ltr">+{children.toLocaleString('he-IL')}</span>
               )}
             </p>
             <p className="stat-hint">
