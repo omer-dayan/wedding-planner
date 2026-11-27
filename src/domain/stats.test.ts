@@ -69,8 +69,7 @@ describe('summarizeGuests', () => {
     ])
     expect(slices.map((slice) => slice.side)).toEqual(['groom', 'bride'])
     expect(slices.map((slice) => slice.people)).toEqual([3, 3])
-    expect(slices[0].color.startsWith('hsl(152')).toBe(true)
-    expect(slices[1].color.startsWith('hsl(12')).toBe(true)
+    expect(slices.map((slice) => slice.color)).toEqual(['var(--accent)', 'var(--gold)'])
   })
 
   it('counts people marked certain and the guests that marked any, without those who declined', () => {

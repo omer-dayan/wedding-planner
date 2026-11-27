@@ -6,7 +6,6 @@ import { isCoupleOrOwner } from '../domain/roles.ts'
 import { sections } from '../sections/registry.tsx'
 import { readLastSeen } from '../sections/home/seen.ts'
 import { applyPalette } from '../domain/palette.ts'
-import { Flower } from '../ui/Flower.tsx'
 
 const TAB_IDS = ['home', 'guests', 'music', 'venues', 'expenses'] as const
 
@@ -59,7 +58,7 @@ export function AppShell() {
       <aside className="sidebar">
         <div className="sidebar-top">
           <div className="brand">
-            <Flower />
+            <img className="brand-photo" src={`${import.meta.env.BASE_URL}couple.png`} alt="" />
             <p className="brand-title">{app.wedding?.name ?? 'החתונה שלנו'}</p>
           </div>
           <AccountMenu />

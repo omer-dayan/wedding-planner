@@ -148,6 +148,7 @@ a, a:visited { color: inherit; text-decoration: none; }
 .section-tabs { display: none; }
 
 .flower { width: 42px; height: 42px; flex: none; }
+.brand-photo { width: 42px; height: 42px; flex: none; border-radius: 50%; object-fit: cover; }
 .flower.flower-lg { width: 64px; height: 64px; }
 
 .tab-badge {
@@ -313,8 +314,8 @@ a, a:visited { color: inherit; text-decoration: none; }
 .side-pie-total { color: var(--ink); font-weight: 600; }
 .side-pie-total strong { margin-inline-start: auto; }
 .swatch { width: 10px; height: 10px; border-radius: 999px; flex: none; }
-.swatch-groom { background: hsl(152 28% 34%); }
-.swatch-bride { background: hsl(12 42% 52%); }
+.swatch-groom { background: var(--accent); }
+.swatch-bride { background: var(--gold); }
 
 .table-scroll { overflow-x: auto; }
 

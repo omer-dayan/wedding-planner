@@ -73,7 +73,8 @@ export interface PieSlice {
   color: string
 }
 
-const SIDE_COLOR = { groom: 'hsl(152 28% 34%)', bride: 'hsl(12 42% 52%)' } as const
+// Follow the palette chosen in settings.
+const SIDE_COLOR = { groom: 'var(--accent)', bride: 'var(--gold)' } as const
 
 export function pieSlices(
   guests: readonly Pick<Guest, 'side' | 'partySize' | 'group' | 'category' | 'categoryId'>[],
