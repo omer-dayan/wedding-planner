@@ -110,6 +110,7 @@ export function ContactsImportDialog({
         childrenSmall: 0,
         childrenOlder: 0,
         drinkerCount: 0,
+        certainCount: 0,
         partySizeAssumed: false,
         rsvp: 'pending',
         notes: '',

@@ -37,6 +37,7 @@ export function GuestForm({
   const [childrenSmall, setChildrenSmall] = useState(String(guest?.childrenSmall ?? 0))
   const [childrenOlder, setChildrenOlder] = useState(String(guest?.childrenOlder ?? 0))
   const [drinkerCount, setDrinkerCount] = useState(String(guest?.drinkerCount ?? 0))
+  const [certainCount, setCertainCount] = useState(String(guest?.certainCount ?? 0))
   const [rsvp, setRsvp] = useState<RsvpStatus>(guest?.rsvp ?? 'pending')
   const [notes, setNotes] = useState(guest?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +64,7 @@ export function GuestForm({
         childrenSmall: parsedSmall,
         childrenOlder: parsedOlder,
         drinkerCount: parsedDrinkers,
+        certainCount: Number(certainCount),
         partySizeAssumed: false,
         rsvp,
         notes,
@@ -139,10 +141,22 @@ export function GuestForm({
             setPartySize(event.target.value)
             const next = Number(event.target.value)
             if (Number.isInteger(next) && Number(drinkerCount) > next) setDrinkerCount(String(Math.max(next, 0)))
+            if (Number.isInteger(next) && Number(certainCount) > next) setCertainCount(String(Math.max(next, 0)))
           }}
           inputMode="numeric"
           min={1}
           max={100}
+          type="number"
+        />
+      </label>
+      <label className="field">
+        <span>כמה מגיעים בוודאות</span>
+        <input
+          value={certainCount}
+          onChange={(event) => setCertainCount(event.target.value)}
+          inputMode="numeric"
+          min={0}
+          max={Number(partySize) || 1}
           type="number"
         />
       </label>

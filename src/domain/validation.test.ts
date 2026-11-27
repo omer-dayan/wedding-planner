@@ -14,3 +14,11 @@ describe('parseStoredGuest children', () => {
     expect([guest?.childrenSmall, guest?.childrenOlder]).toEqual([0, 3])
   })
 })
+
+describe('certain count', () => {
+  it('keeps a stored certain count within the party size', () => {
+    expect(parseStoredGuest({ ...base, certainCount: 1 })?.certainCount).toBe(1)
+    expect(parseStoredGuest({ ...base, certainCount: 5 })?.certainCount).toBe(2)
+    expect(parseStoredGuest(base)?.certainCount).toBe(0)
+  })
+})

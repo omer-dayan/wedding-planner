@@ -72,4 +72,15 @@ describe('summarizeGuests', () => {
     expect(slices[0].color.startsWith('hsl(152')).toBe(true)
     expect(slices[1].color.startsWith('hsl(12')).toBe(true)
   })
+
+  it('counts people marked certain and the guests that marked any, without those who declined', () => {
+    const stats = summarizeGuests([
+      makeGuest({ partySize: 2, certainCount: 1, rsvp: 'attending' }),
+      makeGuest({ partySize: 3, certainCount: 3, rsvp: 'pending' }),
+      makeGuest({ partySize: 1, certainCount: 0, rsvp: 'pending' }),
+      makeGuest({ partySize: 2, certainCount: 2, rsvp: 'declined' }),
+    ])
+    expect(stats.overall.certain).toBe(4)
+    expect(stats.overall.certainRecords).toBe(2)
+  })
 })

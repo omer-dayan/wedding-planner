@@ -120,6 +120,7 @@ service cloud.firestore {
           'childrenSmall',
           'childrenOlder',
           'drinkerCount',
+          'certainCount',
           'partySizeAssumed',
           'rsvp',
           'notes',
@@ -144,6 +145,7 @@ service cloud.firestore {
         && (!data.keys().hasAny(['childrenSmall']) || (data.childrenSmall is int && data.childrenSmall >= 0 && data.childrenSmall <= 100))
         && (!data.keys().hasAny(['childrenOlder']) || (data.childrenOlder is int && data.childrenOlder >= 0 && data.childrenOlder <= 100))
         && (!data.keys().hasAny(['drinkerCount']) || (data.drinkerCount is int && data.drinkerCount >= 0 && data.drinkerCount <= 100))
+        && (!data.keys().hasAny(['certainCount']) || (data.certainCount is int && data.certainCount >= 0 && data.certainCount <= data.partySize))
         && data.rsvp in ['pending', 'attending', 'declined', 'maybe']
         && (data.side == null || data.side in ['groom', 'bride', 'shared'])
         && (data.role == null || knownRole(data.role))

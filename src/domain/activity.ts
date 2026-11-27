@@ -84,6 +84,7 @@ const FIELD_LABELS: Record<string, string> = {
   childrenSmall: 'ילדים 0-3',
   childrenOlder: 'ילדים 4-10',
   drinkerCount: 'שותים',
+  certainCount: 'בוודאות',
   notes: 'הערה',
 }
 
@@ -378,6 +379,7 @@ function changedGuestFields(before: Guest, after: Guest): string[] {
   if (before.childrenSmall !== after.childrenSmall) fields.push('childrenSmall')
   if (before.childrenOlder !== after.childrenOlder) fields.push('childrenOlder')
   if (before.drinkerCount !== after.drinkerCount) fields.push('drinkerCount')
+  if (before.certainCount !== after.certainCount) fields.push('certainCount')
   if (before.notes !== after.notes) fields.push('notes')
   return fields
 }

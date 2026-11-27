@@ -32,6 +32,9 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
   if (!Number.isInteger(input.drinkerCount) || input.drinkerCount < 0 || input.drinkerCount > input.partySize) {
     errors.push('drinker-count')
   }
+  if (!Number.isInteger(input.certainCount) || input.certainCount < 0 || input.certainCount > input.partySize) {
+    errors.push('certain-count')
+  }
   const role = isWeddingRole(input.role) ? input.role : null
   if (input.role !== null && !role) errors.push('role')
   const side = input.side
@@ -55,6 +58,7 @@ export function normalizeDraft(input: GuestDraft): GuestDraft {
     childrenSmall: input.childrenSmall,
     childrenOlder: input.childrenOlder,
     drinkerCount: input.drinkerCount,
+    certainCount: input.certainCount,
     partySizeAssumed: input.partySizeAssumed,
     rsvp: input.rsvp,
     notes,
@@ -73,6 +77,7 @@ function storedChildren(record: Record<string, unknown>): { childrenSmall: numbe
   return { childrenSmall: wholeCount(record.childrenSmall), childrenOlder: wholeCount(record.childrenOlder) }
 }
 
+/** A stored count of part of the party, kept between 0 and the party size. */
 function storedDrinkers(value: unknown, partySize: number): number {
   const count = typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : 0
   if (!Number.isInteger(partySize) || partySize < 1) return 0
@@ -98,6 +103,7 @@ export function parseStoredGuest(value: unknown): Guest | null {
       partySize: typeof record.partySize === 'number' ? record.partySize : Number.NaN,
       ...storedChildren(record),
       drinkerCount: storedDrinkers(record.drinkerCount, typeof record.partySize === 'number' ? record.partySize : 0),
+      certainCount: storedDrinkers(record.certainCount, typeof record.partySize === 'number' ? record.partySize : 0),
       partySizeAssumed: record.partySizeAssumed === true,
       rsvp: (typeof record.rsvp === 'string' ? record.rsvp : '') as GuestDraft['rsvp'],
       notes: typeof record.notes === 'string' ? record.notes : '',

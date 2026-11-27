@@ -4,6 +4,7 @@ import { SideSplit } from './SideSplit.tsx'
 
 const CARDS = [
   ['total', 'סה״כ מוזמנים', 'הזמנות'],
+  ['certain', 'בוודאות מגיעים', 'הזמנות סומנו'],
   ['drinkers', 'שותים', 'אלכוהול, בלי מי שלא מגיע'],
   ['attending', 'מגיעים', 'אישרו הגעה'],
   ['declined', 'לא מגיעים', 'לא יגיעו'],
@@ -16,6 +17,7 @@ const CARDS = [
 export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: readonly Guest[] }) {
   const values = {
     total: stats.overall.people,
+    certain: stats.overall.certain,
     drinkers: stats.overall.drinkers,
     attending: stats.overall.attending,
     declined: stats.overall.declined,
@@ -39,7 +41,7 @@ export function Summary({ stats, guests = [] }: { stats: GuestStats; guests?: re
               )}
             </p>
             <p className="stat-hint">
-              {key === 'total' ? `${stats.overall.records.toLocaleString('he-IL')} ${hint}` : hint}
+              {key === 'total' ? `${stats.overall.records.toLocaleString('he-IL')} ${hint}` : key === 'certain' ? `${stats.overall.certainRecords.toLocaleString('he-IL')} ${hint}` : hint}
             </p>
           </article>
         ))}

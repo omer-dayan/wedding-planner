@@ -238,6 +238,7 @@ export function GuestListPage() {
                       <th>אנשים</th>
                       <th>ילדים 0-3</th>
                       <th>ילדים 4-10</th>
+                      <th>בוודאות</th>
                       <th>שותים</th>
                       <th>סטטוס</th>
                       <th>פעולות</th>
@@ -260,6 +261,7 @@ export function GuestListPage() {
                         </td>
                         <td>{guest.childrenSmall}</td>
                         <td>{guest.childrenOlder}</td>
+                        <td>{guest.certainCount}</td>
                         <td>{guest.drinkerCount}</td>
                         <td><span className={`badge badge-${guest.rsvp}`}>{RSVP_LABELS[guest.rsvp]}</span></td>
                         <td className="row-actions">
@@ -298,6 +300,7 @@ export function GuestListPage() {
                       <span>{guest.partySize} אנשים</span>
                       {guest.childrenSmall > 0 && <span>{guest.childrenSmall} ילדים 0-3</span>}
                       {guest.childrenOlder > 0 && <span>{guest.childrenOlder} ילדים 4-10</span>}
+                      {guest.certainCount > 0 && <span>{guest.certainCount} בוודאות</span>}
                       <span>{guest.drinkerCount} שותים</span>
                       {guest.partySizeAssumed && <span className="badge badge-assumed">לא צוין</span>}
                     </p>

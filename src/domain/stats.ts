@@ -8,6 +8,9 @@ export interface StatusCounts {
   childrenSmall: number
   childrenOlder: number
   drinkers: number
+  /** People marked certain to come, and how many guests have any marked. */
+  certain: number
+  certainRecords: number
   attending: number
   declined: number
   pending: number
@@ -29,6 +32,8 @@ export function emptyCounts(): StatusCounts {
     childrenSmall: 0,
     childrenOlder: 0,
     drinkers: 0,
+    certain: 0,
+    certainRecords: 0,
     attending: 0,
     declined: 0,
     pending: 0,
@@ -112,7 +117,11 @@ function addCounts(bucket: StatusCounts, guest: Guest) {
   bucket.people += guest.partySize
   bucket.childrenSmall += guest.childrenSmall
   bucket.childrenOlder += guest.childrenOlder
-  if (guest.rsvp !== 'declined') bucket.drinkers += guest.drinkerCount
+  if (guest.rsvp !== 'declined') {
+    bucket.drinkers += guest.drinkerCount
+    bucket.certain += guest.certainCount
+    if (guest.certainCount > 0) bucket.certainRecords += 1
+  }
   bucket[guest.rsvp satisfies RsvpStatus] += guest.partySize
   if (guest.partySizeAssumed) bucket.assumedRecords += 1
 }
