@@ -21,6 +21,14 @@ describe('guest category tree', () => {
     expect(subtreeIds(tree, 'c_friends')).toEqual(['c_friends', 'c_work'])
     expect(subtreeIds(tree, 'c_family')).toEqual(['c_family', 'c_nuclear'])
     expect(pathLabel(tree, 'c_work')).toBe('חברים / עבודה')
+    const school: GuestCategory = { id: 'c_school', label: 'חברי בית ספר יסודי', parentId: 'c_childhood' }
+    const childhood: GuestCategory = { id: 'c_childhood', label: 'חברי ילדות', parentId: 'c_friends' }
+    expect(pathLabel([friends, childhood, school], 'c_school')).toBe('חברים / חברי ילדות / חברי בית ספר יסודי')
+    expect(normalizeGuestCategories(Array.from({ length: 41 }, (_, index) => ({
+      id: `c_${index}`,
+      label: `קטגוריה ${index}`,
+      parentId: '',
+    }))).length).toBe(41)
     expect(legacyCategory(tree, 'c_nuclear')).toBe('family')
     expect(legacyCategory(tree, 'c_work')).toBe('work')
   })

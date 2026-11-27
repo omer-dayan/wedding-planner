@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { flattenTree, legacyCategory, type GuestCategory } from '../../domain/guestCategories.ts'
+import { flattenTree, legacyCategory, pathLabel, type GuestCategory } from '../../domain/guestCategories.ts'
 import { RSVP_LABELS, SIDE_LABELS, SUB_SIDE_LABELS, sideLabel } from '../../domain/labels.ts'
 import { RSVP_STATUSES, SUB_SIDES } from '../../domain/types.ts'
 import type { Guest, GuestDraft, RsvpStatus, SubSide } from '../../domain/types.ts'
@@ -121,9 +121,9 @@ export function GuestForm({
         <span>קטגוריה</span>
         <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
           <option value="">ללא קטגוריה</option>
-          {flattenTree(categories).map(({ category, depth }) => (
+          {flattenTree(categories).map(({ category }) => (
             <option key={category.id} value={category.id}>
-              {`${'– '.repeat(depth)}${category.label}`}
+              {pathLabel(categories, category.id)}
             </option>
           ))}
         </select>

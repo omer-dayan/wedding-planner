@@ -8,7 +8,6 @@ export interface GuestCategory {
   parentId: string
 }
 
-const MAX_CATEGORIES = 40
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/
 
 export function createGuestCategory(label = '', parentId = ''): GuestCategory {
@@ -21,7 +20,6 @@ export function isGuestCategoryId(value: string): boolean {
 
 export function normalizeGuestCategories(value: unknown): GuestCategory[] {
   if (!Array.isArray(value)) throw new ValidationError(['guest-categories'])
-  if (value.length > MAX_CATEGORIES) throw new ValidationError(['too-many-categories'])
   const categories: GuestCategory[] = []
   const seen = new Set<string>()
   for (const entry of value) {

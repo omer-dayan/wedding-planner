@@ -4,6 +4,7 @@ import {
   createGuestCategory,
   flattenTree,
   normalizeGuestCategories,
+  pathLabel,
   removeGuestCategory,
   type GuestCategory,
 } from '../../domain/guestCategories.ts'
@@ -60,7 +61,7 @@ export function CategoryTreeEditor({
     <div className="stack-form">
       <p>חתן וכלה נשארים צד, לא קטגוריה. כאן בונים עץ: אנשים נכנסים לקטגוריה, וקטגוריה יכולה לשבת מתחת לקטגוריה אחרת.</p>
       {rows.length === 0 && <p className="hint">עדיין אין קטגוריות.</p>}
-      <button type="button" className="btn btn-primary" disabled={busy || draft.length >= 40} onClick={() => add()}>
+      <button type="button" className="btn btn-primary" disabled={busy} onClick={() => add()}>
         קטגוריה חדשה
       </button>
       <ul className="question-editor">
@@ -86,8 +87,8 @@ export function CategoryTreeEditor({
                 }}
               >
                 <option value="">ברמה הראשית</option>
-                {draft.filter((item) => item.id !== category.id && canParent(draft, category.id, item.id)).map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
+                {flattenTree(draft).filter(({ category: item }) => canParent(draft, category.id, item.id)).map(({ category: item }) => (
+                  <option key={item.id} value={item.id}>{pathLabel(draft, item.id)}</option>
                 ))}
               </select>
             </label>

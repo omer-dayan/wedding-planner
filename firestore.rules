@@ -85,7 +85,7 @@ service cloud.firestore {
     }
 
     function validGuestCategories(list) {
-      return list is list && list.size() <= 40;
+      return list is list;
     }
 
     function validFamilyPlaces(list) {
