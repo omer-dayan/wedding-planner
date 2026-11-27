@@ -8,7 +8,7 @@ import {
   MAX_BLOCKED_DATES,
   type BlockedDate,
 } from '../../domain/blockedDates.ts'
-import { messageFrom } from '../../ui/messageFrom.ts'
+import { useAction } from '../../ui/useAction.ts'
 
 export function BlockedDatesPanel({
   dates,
@@ -24,21 +24,14 @@ export function BlockedDatesPanel({
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [reason, setReason] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const { busy: saving, error, setError, run } = useAction()
   const canEdit = manage && onSave !== null
 
   async function save(next: BlockedDate[]) {
     if (!onSave) return
-    setSaving(true)
-    setError(null)
-    try {
+    await run(async () => {
       await onSave(next)
-    } catch (failure) {
-      setError(messageFrom(failure))
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   async function add(event: FormEvent) {

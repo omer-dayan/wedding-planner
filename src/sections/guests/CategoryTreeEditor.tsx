@@ -8,7 +8,7 @@ import {
   removeGuestCategory,
   type GuestCategory,
 } from '../../domain/guestCategories.ts'
-import { messageFrom } from '../../ui/messageFrom.ts'
+import { useAction } from '../../ui/useAction.ts'
 
 export function CategoryTreeEditor({
   categories,
@@ -20,8 +20,7 @@ export function CategoryTreeEditor({
   onClose: () => void
 }) {
   const [draft, setDraft] = useState<GuestCategory[]>(() => categories.map((category) => ({ ...category })))
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const { busy, error, setError, run } = useAction()
   const rows = flattenTree(draft)
 
   function add(parentId = '') {
@@ -39,22 +38,15 @@ export function CategoryTreeEditor({
   }
 
   async function save() {
-    setBusy(true)
-    setError(null)
-    try {
+    await run(async () => {
       if (draft.some((category) => category.label.trim() === '')) {
         setError('לכל קטגוריה צריך שם.')
-        setBusy(false)
         return
       }
       const next = normalizeGuestCategories(draft)
       await onSave(next)
       onClose()
-    } catch (failure) {
-      setError(messageFrom(failure))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
