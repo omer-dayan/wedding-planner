@@ -45,17 +45,10 @@ import { createFirestoreActivityCommentRepository } from './firestoreActivityCom
 import type { ActivityCommentRepository } from './activityCommentRepository.ts'
 import type { ActivityLogger, ActivityRepository } from './activityLog.ts'
 import { recordActivity } from './activityLog.ts'
-import type { ActivityActor, ActivityInput } from '../domain/activity.ts'
-import { normalizeVenueQuestions, readVenueQuestions } from '../domain/venueQuestions.ts'
+import { venueQuestionsInput, type ActivityActor, type ActivityInput } from '../domain/activity.ts'
 import type { VenueQuestion } from '../domain/venueQuestions.ts'
-import { normalizeGuestCategories, readGuestCategories } from '../domain/guestCategories.ts'
-import type { GuestCategory } from '../domain/guestCategories.ts'
-import type { BlockedDate } from '../domain/blockedDates.ts'
-import { normalizeBlockedDates, readBlockedDates } from '../domain/blockedDates.ts'
-import { normalizeFamilyPlaces, readFamilyPlaces } from '../domain/geo.ts'
-import type { FamilyPlace } from '../domain/geo.ts'
-import { readPalette, type PaletteChoice } from '../domain/palette.ts'
-import { emailVariants, normalizeWeddingDate, normalizeWeddingName, type Wedding } from '../domain/members.ts'
+import { normalizeSetting, readSettings, type SettingKey, type SettingValue } from '../domain/settings.ts'
+import { emailVariants, normalizeWeddingName, type Wedding } from '../domain/members.ts'
 import { cleanMemberRoles, type WeddingRoleId } from '../domain/roles.ts'
 import { parseStoredGuest } from '../domain/validation.ts'
 
@@ -63,16 +56,7 @@ export interface WeddingRepository {
   subscribe(listener: (weddings: Wedding[]) => void, onError?: (error: unknown) => void): () => void
   create(ownerEmail: string, name?: string): Promise<Wedding>
   updateName(id: string, name: string): Promise<void>
-  updateDate(id: string, weddingDate: string): Promise<void>
-  updateQuestions(
-    id: string,
-    questions: readonly VenueQuestion[],
-    activity?: { logger: ActivityLogger; inputs: readonly ActivityInput[] },
-  ): Promise<void>
-  updateCategories(id: string, categories: readonly GuestCategory[]): Promise<void>
-  updatePlaces(id: string, places: readonly FamilyPlace[]): Promise<void>
-  updateBlockedDates(id: string, dates: readonly BlockedDate[]): Promise<void>
-  updatePalette(id: string, palette: PaletteChoice | null): Promise<void>
+  updateSetting<K extends SettingKey>(id: string, key: K, value: SettingValue<K>, logger?: ActivityLogger): Promise<void>
   updateMembers(
     id: string,
     memberEmails: readonly string[],
@@ -217,12 +201,7 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         ownerEmail,
         memberEmails: emailVariants(ownerEmail),
         memberRoles: { [ownerEmail.trim().toLowerCase()]: 'groom' },
-        weddingDate: '',
-        venueQuestions: [],
-        guestCategories: [],
-        familyPlaces: [],
-        blockedDates: [],
-        palette: null,
+        ...readSettings(() => undefined),
         createdAt: timestamp,
         updatedAt: timestamp,
       }
@@ -246,44 +225,12 @@ function createFirestoreWeddingRepository(db: Firestore, email: string): Wedding
         updatedAt: new Date().toISOString(),
       })
     },
-    async updateDate(id, weddingDate) {
-      await updateDoc(doc(weddings, id), {
-        weddingDate: normalizeWeddingDate(weddingDate),
-        updatedAt: new Date().toISOString(),
-      })
-    },
-    async updateQuestions(id, questions, activity) {
+    async updateSetting(id, key, value, logger) {
+      const normalized = normalizeSetting(key, value)
       const batch = writeBatch(db)
-      batch.update(doc(weddings, id), {
-        venueQuestions: normalizeVenueQuestions(questions),
-        updatedAt: new Date().toISOString(),
-      })
-      if (activity) recordActivity(activity.logger, activity.inputs, batch)
+      batch.update(doc(weddings, id), { [key]: normalized, updatedAt: new Date().toISOString() })
+      if (key === 'venueQuestions') recordActivity(logger, [venueQuestionsInput(normalized as VenueQuestion[])], batch)
       await batch.commit()
-    },
-    async updateCategories(id, categories) {
-      await updateDoc(doc(weddings, id), {
-        guestCategories: normalizeGuestCategories(categories),
-        updatedAt: new Date().toISOString(),
-      })
-    },
-    async updateBlockedDates(id, dates) {
-      await updateDoc(doc(weddings, id), {
-        blockedDates: normalizeBlockedDates(dates),
-        updatedAt: new Date().toISOString(),
-      })
-    },
-    async updatePlaces(id, places) {
-      await updateDoc(doc(weddings, id), {
-        familyPlaces: normalizeFamilyPlaces(places),
-        updatedAt: new Date().toISOString(),
-      })
-    },
-    async updatePalette(id, palette) {
-      await updateDoc(doc(weddings, id), {
-        palette: palette ? { green: palette.green, pink: palette.pink } : null,
-        updatedAt: new Date().toISOString(),
-      })
     },
     async updateMembers(id, memberEmails, memberRoles, activity) {
       const batch = writeBatch(db)
@@ -310,12 +257,7 @@ function weddingFromData(id: string, data: Record<string, unknown>): Wedding | n
     ownerEmail: data.ownerEmail,
     memberEmails,
     memberRoles,
-    weddingDate: typeof data.weddingDate === 'string' ? data.weddingDate : '',
-    venueQuestions: readVenueQuestions(data.venueQuestions),
-    guestCategories: readGuestCategories(data.guestCategories),
-    familyPlaces: readFamilyPlaces(data.familyPlaces),
-    blockedDates: readBlockedDates(data.blockedDates),
-    palette: readPalette(data.palette),
+    ...readSettings((key) => data[key]),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
   }

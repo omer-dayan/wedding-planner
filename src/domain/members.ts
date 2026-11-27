@@ -1,23 +1,13 @@
-import type { BlockedDate } from './blockedDates.ts'
 import { DomainError } from './errors.ts'
 import type { WeddingRoleId } from './roles.ts'
-import type { FamilyPlace } from './geo.ts'
-import type { PaletteChoice } from './palette.ts'
-import type { GuestCategory } from './guestCategories.ts'
-import type { VenueQuestion } from './venueQuestions.ts'
+import type { WeddingSettings } from './settings.ts'
 
-export interface Wedding {
+export interface Wedding extends WeddingSettings {
   id: string
   name: string
   ownerEmail: string
   memberEmails: string[]
   memberRoles: Record<string, WeddingRoleId>
-  weddingDate: string
-  venueQuestions: VenueQuestion[]
-  guestCategories: GuestCategory[]
-  familyPlaces: FamilyPlace[]
-  blockedDates: BlockedDate[]
-  palette: PaletteChoice | null
   createdAt: string
   updatedAt: string
 }
