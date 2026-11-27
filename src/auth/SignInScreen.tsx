@@ -1,5 +1,5 @@
 import { errorText } from '../domain/labels.ts'
-import { Rings } from '../ui/Rings.tsx'
+import { Flower } from '../ui/Flower.tsx'
 
 export function SignInScreen({
   busy,
@@ -13,7 +13,7 @@ export function SignInScreen({
   return (
     <main className="sign-in" data-testid="sign-in">
       <section className="sign-in-card">
-        <Rings />
+        <Flower className="flower flower-lg" />
         <p className="brand-kicker">החתונה שלנו</p>
         <h1>תכנון חתונה</h1>
         <p className="lede">רשימת המוזמנים נשמרת בענן וזמינה גם בטלפון וגם במחשב.</p>

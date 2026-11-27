@@ -16,7 +16,7 @@ import type { WeddingRoleId } from '../domain/roles.ts'
 import { SignInScreen } from '../auth/SignInScreen.tsx'
 import { AppShell } from '../layout/AppShell.tsx'
 import { mapAuthError, messageFrom } from '../ui/messageFrom.ts'
-import { Rings } from '../ui/Rings.tsx'
+import { Flower } from '../ui/Flower.tsx'
 import { Splash } from '../ui/Splash.tsx'
 import { AppServicesProvider, type AppServices, type SessionUser } from './context.tsx'
 
@@ -132,7 +132,7 @@ function WeddingGate({ services, user }: { services: FirebaseServices; user: Ses
     return (
       <div className="sign-in">
         <div className="sign-in-card">
-          <Rings />
+          <Flower className="flower flower-lg" />
           <p className="form-error" role="alert">{error}</p>
           <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
             נסו שוב
